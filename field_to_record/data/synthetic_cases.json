@@ -1,0 +1,43 @@
+[
+  {
+    "case_id": "SYN-001",
+    "narrative": "At 10:42, administered 5 mg of fictional agent X intravenously.",
+    "expected_checks": [
+      "medication",
+      "5 mg",
+      "intravenous",
+      "10:42"
+    ]
+  },
+  {
+    "case_id": "SYN-002",
+    "narrative": "No fictional agent X was administered.",
+    "expected_checks": [
+      "negated",
+      "not a confirmed administration"
+    ]
+  },
+  {
+    "case_id": "SYN-003",
+    "narrative": "At 10:44, performed a simulated airway procedure.",
+    "expected_checks": [
+      "procedure",
+      "10:44"
+    ]
+  },
+  {
+    "case_id": "SYN-004",
+    "narrative": "The dose of fictional agent X is unclear.",
+    "expected_checks": [
+      "uncertainty",
+      "no invented dose"
+    ]
+  },
+  {
+    "case_id": "SYN-005",
+    "narrative": "Responder noted an unusual sound.",
+    "expected_checks": [
+      "unclassified text preserved"
+    ]
+  }
+]
