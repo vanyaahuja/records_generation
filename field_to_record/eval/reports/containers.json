@@ -1,0 +1,41 @@
+{
+  "api_ready": {
+    "ready": true,
+    "lexicon_entries": 125,
+    "nlu": "rules-2.0"
+  },
+  "speech_ready": {
+    "ready": true,
+    "error": null,
+    "active": 0,
+    "sessions": 0,
+    "max_sessions": 4,
+    "model": "speech"
+  },
+  "record_id": "eb4658f1-2768-4e59-afcc-756c01b808d8",
+  "exports": {
+    "json": 5422,
+    "fhir": 3199,
+    "pdf": 3150,
+    "html": 1342,
+    "text": 893
+  },
+  "audit": {
+    "valid": true,
+    "entries_verified": 11,
+    "head_hash": "9b59fb296e03ae65bde0aa1c107c759a16c713ff9cc9fcb2835d1b0021213a6a",
+    "error": null,
+    "limitation": "A privileged database rewrite can recompute this chain. No external trust anchor."
+  },
+  "uploaded_audio": {
+    "text": "At 1405, gave 5 milligrams of fictional agent X intravenously.",
+    "model": "speech",
+    "inference_ms": 1589.45,
+    "rtf": 0.2474377995290731
+  },
+  "stream": {
+    "first_nonempty_partial_ms": 1444.74,
+    "final_transcript": "At 14.05, gave 5 milligrams of fictional agent X intravenously."
+  },
+  "elapsed_seconds": 11.81
+}

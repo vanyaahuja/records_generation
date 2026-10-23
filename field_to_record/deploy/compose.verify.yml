@@ -1,0 +1,4 @@
+# Local integration checks only. The normal deployment does not publish PostgreSQL.
+services:
+  postgres:
+    ports: ['127.0.0.1:15432:5432']

@@ -1,0 +1,68 @@
+name: field-to-record
+services:
+  api:
+    build: {context: ., dockerfile: backend/Dockerfile, target: runtime, args: {OFFLINE_BUILD: '${OFFLINE_BUILD:-0}'}}
+    image: field-to-record-api:local
+    environment:
+      DATABASE_PATH: /data/records.sqlite3
+      RECORD_ENCRYPTION_KEY: ${RECORD_ENCRYPTION_KEY:-}
+      ALLOWED_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+    volumes: [records:/data]
+    networks: [local]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    stop_grace_period: 30s
+  asr:
+    build: {context: ., dockerfile: backend/Dockerfile, target: speech, args: {MODEL_DIR: '${MODEL_DIR:-whisper-tiny.en}', OFFLINE_BUILD: '${OFFLINE_BUILD:-0}'}}
+    image: field-to-record-asr:local
+    environment:
+      WHISPER_CPU_THREADS: ${WHISPER_CPU_THREADS:-4}
+      MAX_SPEECH_SESSIONS: ${MAX_SPEECH_SESSIONS:-4}
+      ALLOWED_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    networks: [local]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      start_period: 60s
+    restart: unless-stopped
+    stop_grace_period: 30s
+  web:
+    build: {context: ., dockerfile: frontend/Dockerfile, args: {OFFLINE_BUILD: '${OFFLINE_BUILD:-0}'}}
+    image: field-to-record-web:local
+    ports: ['127.0.0.1:8080:8080']
+    depends_on:
+      api: {condition: service_healthy}
+      asr: {condition: service_started}
+    networks: [local]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+  nlu:
+    profiles: [workers]
+    image: field-to-record-api:local
+    command: [uvicorn, app.nlu:app, --host, 0.0.0.0, --port, '8000', --no-access-log, --log-config, /app/app/logging.json]
+    networks: [local]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  docgen:
+    profiles: [workers]
+    image: field-to-record-api:local
+    command: [uvicorn, app.renderer:app, --host, 0.0.0.0, --port, '8000', --no-access-log, --log-config, /app/app/logging.json]
+    networks: [local]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+networks:
+  local: {}
+volumes:
+  records:

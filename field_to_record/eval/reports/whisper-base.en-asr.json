@@ -1,0 +1,516 @@
+{
+  "model": "field_to_record/models/whisper-base.en",
+  "warmup_seconds": 2.4716138999792747,
+  "synthetic_only": true,
+  "word_error_note": "Literal WER penalizes digit vs spoken-number formatting. Not clinical accuracy.",
+  "silence_transcript": "",
+  "cases": [
+    {
+      "case": "medication",
+      "reference": "At fourteen oh five gave five milligrams of fictional agent X intravenously",
+      "text": "At 14.05, gave 5 mg of fictional Agent X intravenously.",
+      "segments": [
+        {
+          "text": "At 14.05, gave 5 mg of fictional Agent X intravenously.",
+          "start": 0.0,
+          "end": 5.4
+        }
+      ],
+      "words": [
+        {
+          "w": "At",
+          "start": 0.0,
+          "end": 0.24,
+          "prob": 0.883999228477478
+        },
+        {
+          "w": "14",
+          "start": 0.24,
+          "end": 0.56,
+          "prob": 0.902083694934845
+        },
+        {
+          "w": ".05,",
+          "start": 0.56,
+          "end": 1.16,
+          "prob": 0.9365086555480957
+        },
+        {
+          "w": "gave",
+          "start": 1.8,
+          "end": 2.04,
+          "prob": 0.9297148585319519
+        },
+        {
+          "w": "5",
+          "start": 2.04,
+          "end": 2.52,
+          "prob": 0.9261748194694519
+        },
+        {
+          "w": "mg",
+          "start": 2.52,
+          "end": 2.78,
+          "prob": 0.5699666142463684
+        },
+        {
+          "w": "of",
+          "start": 2.78,
+          "end": 3.34,
+          "prob": 0.993259608745575
+        },
+        {
+          "w": "fictional",
+          "start": 3.34,
+          "end": 3.7,
+          "prob": 0.9114871025085449
+        },
+        {
+          "w": "Agent",
+          "start": 3.7,
+          "end": 4.08,
+          "prob": 0.5307513475418091
+        },
+        {
+          "w": "X",
+          "start": 4.08,
+          "end": 4.54,
+          "prob": 0.9425605535507202
+        },
+        {
+          "w": "intravenously.",
+          "start": 4.54,
+          "end": 5.4,
+          "prob": 0.9773942530155182
+        }
+      ],
+      "duration": 6.423625,
+      "rtf": 0.24168325516738753,
+      "inference_ms": 1552.48,
+      "language": "en",
+      "model": "whisper-base.en",
+      "wer": 0.4166666666666667,
+      "events": [
+        {
+          "event_id": "414be8de-3db5-4f01-8ed9-3372bdb3d2a9",
+          "event_type": "medication_administration",
+          "description": "fictional agent x",
+          "medication": "fictional agent x",
+          "dose": {
+            "value": 5.0,
+            "unit": "mg",
+            "source_text": "5 mg"
+          },
+          "route": "intravenous",
+          "observation": null,
+          "event_time": null,
+          "time_source": "unknown",
+          "action_status": "completed",
+          "status": "reported",
+          "source_text": "At 14.05, gave 5 mg of fictional Agent X intravenously.",
+          "source_offset": 0,
+          "fields": {
+            "event_time": {
+              "value": null,
+              "status": "missing",
+              "confidence": null,
+              "evidence": null,
+              "raw": null
+            },
+            "medication": {
+              "value": "fictional agent x",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                23,
+                40
+              ],
+              "raw": "fictional Agent X"
+            },
+            "dose": {
+              "value": {
+                "value": 5.0,
+                "unit": "mg",
+                "source_text": "5 mg"
+              },
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                15,
+                19
+              ],
+              "raw": "5 mg"
+            },
+            "route": {
+              "value": "intravenous",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                41,
+                54
+              ],
+              "raw": "intravenously"
+            }
+          },
+          "review_status": "needs_human_confirmation",
+          "flags": [
+            "missing_time"
+          ],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ]
+    },
+    {
+      "case": "observations",
+      "reference": "At fourteen ten recorded blood pressure one twenty over eighty at fourteen twelve performed bandaging",
+      "text": "At 1410, recorded blood pressure 120 over 80. At 1412 performed bandaging.",
+      "segments": [
+        {
+          "text": "At 1410, recorded blood pressure 120 over 80.",
+          "start": 0.0,
+          "end": 4.1
+        },
+        {
+          "text": "At 1412 performed bandaging.",
+          "start": 5.26,
+          "end": 7.44
+        }
+      ],
+      "words": [
+        {
+          "w": "At",
+          "start": 0.0,
+          "end": 0.22,
+          "prob": 0.7266197800636292
+        },
+        {
+          "w": "1410,",
+          "start": 0.22,
+          "end": 1.04,
+          "prob": 0.6347235590219498
+        },
+        {
+          "w": "recorded",
+          "start": 1.52,
+          "end": 1.98,
+          "prob": 0.9555854797363281
+        },
+        {
+          "w": "blood",
+          "start": 1.98,
+          "end": 2.36,
+          "prob": 0.9740015864372253
+        },
+        {
+          "w": "pressure",
+          "start": 2.36,
+          "end": 2.82,
+          "prob": 0.997329592704773
+        },
+        {
+          "w": "120",
+          "start": 2.82,
+          "end": 3.14,
+          "prob": 0.9404160380363464
+        },
+        {
+          "w": "over",
+          "start": 3.14,
+          "end": 3.82,
+          "prob": 0.621202826499939
+        },
+        {
+          "w": "80.",
+          "start": 3.82,
+          "end": 4.1,
+          "prob": 0.9934698343276978
+        },
+        {
+          "w": "At",
+          "start": 5.26,
+          "end": 5.38,
+          "prob": 0.9838275909423828
+        },
+        {
+          "w": "1412",
+          "start": 5.38,
+          "end": 6.14,
+          "prob": 0.958084911108017
+        },
+        {
+          "w": "performed",
+          "start": 6.14,
+          "end": 6.64,
+          "prob": 0.7413492202758789
+        },
+        {
+          "w": "bandaging.",
+          "start": 6.64,
+          "end": 7.44,
+          "prob": 0.9869525134563446
+        }
+      ],
+      "duration": 8.45325,
+      "rtf": 0.1777194806718653,
+      "inference_ms": 1502.31,
+      "language": "en",
+      "model": "whisper-base.en",
+      "wer": 0.4666666666666667,
+      "events": [
+        {
+          "event_id": "48ce5890-ef10-42e0-b0b0-474fd634fe19",
+          "event_type": "observation",
+          "description": "blood pressure",
+          "medication": null,
+          "dose": null,
+          "route": null,
+          "observation": {
+            "type": "blood_pressure",
+            "systolic": 120.0,
+            "diastolic": 80.0,
+            "unit": "mmHg"
+          },
+          "event_time": "14:10",
+          "time_source": "reported",
+          "action_status": "completed",
+          "status": "reported",
+          "source_text": "At 1410, recorded blood pressure 120 over 80.",
+          "source_offset": 0,
+          "fields": {
+            "event_time": {
+              "value": "14:10",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                0,
+                7
+              ],
+              "raw": "At 1410"
+            },
+            "observation": {
+              "value": {
+                "type": "blood_pressure",
+                "systolic": 120.0,
+                "diastolic": 80.0,
+                "unit": "mmHg"
+              },
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                18,
+                44
+              ],
+              "raw": "blood pressure 120 over 80"
+            }
+          },
+          "review_status": "needs_human_confirmation",
+          "flags": [],
+          "accepted_flags": [],
+          "manual": false
+        },
+        {
+          "event_id": "b4c8619d-62c4-47f8-8c54-25c71981326f",
+          "event_type": "procedure",
+          "description": "bandaging",
+          "medication": null,
+          "dose": null,
+          "route": null,
+          "observation": null,
+          "event_time": "14:12",
+          "time_source": "reported",
+          "action_status": "completed",
+          "status": "reported",
+          "source_text": "At 1412 performed bandaging.",
+          "source_offset": 46,
+          "fields": {
+            "event_time": {
+              "value": "14:12",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                0,
+                7
+              ],
+              "raw": "At 1412"
+            },
+            "description": {
+              "value": "bandaging",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                18,
+                27
+              ],
+              "raw": "bandaging"
+            }
+          },
+          "review_status": "needs_human_confirmation",
+          "flags": [],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ]
+    },
+    {
+      "case": "negation",
+      "reference": "No fictional agent X was administered patient refused medication",
+      "text": "No fictional agent X was administered. Patient-refused medication.",
+      "segments": [
+        {
+          "text": "No fictional agent X was administered.",
+          "start": 0.0,
+          "end": 2.32
+        },
+        {
+          "text": "Patient-refused medication.",
+          "start": 3.1,
+          "end": 5.12
+        }
+      ],
+      "words": [
+        {
+          "w": "No",
+          "start": 0.0,
+          "end": 0.26,
+          "prob": 0.8666088581085205
+        },
+        {
+          "w": "fictional",
+          "start": 0.26,
+          "end": 0.64,
+          "prob": 0.9333400130271912
+        },
+        {
+          "w": "agent",
+          "start": 0.64,
+          "end": 1.04,
+          "prob": 0.6788223385810852
+        },
+        {
+          "w": "X",
+          "start": 1.04,
+          "end": 1.4,
+          "prob": 0.4509928226470947
+        },
+        {
+          "w": "was",
+          "start": 1.4,
+          "end": 1.66,
+          "prob": 0.9960260391235352
+        },
+        {
+          "w": "administered.",
+          "start": 1.66,
+          "end": 2.32,
+          "prob": 0.9960355162620544
+        },
+        {
+          "w": "Patient",
+          "start": 3.1,
+          "end": 3.82,
+          "prob": 0.9767119884490967
+        },
+        {
+          "w": "-refused",
+          "start": 3.82,
+          "end": 4.5,
+          "prob": 0.8325206836064657
+        },
+        {
+          "w": "medication.",
+          "start": 4.5,
+          "end": 5.12,
+          "prob": 0.9824037551879883
+        }
+      ],
+      "duration": 6.2635625,
+      "rtf": 0.14779734375779757,
+      "inference_ms": 925.74,
+      "language": "en",
+      "model": "whisper-base.en",
+      "wer": 0.0,
+      "events": [
+        {
+          "event_id": "61ee0701-45ee-478d-806e-668deba3f505",
+          "event_type": "medication_administration",
+          "description": "fictional agent x",
+          "medication": "fictional agent x",
+          "dose": null,
+          "route": null,
+          "observation": null,
+          "event_time": null,
+          "time_source": "unknown",
+          "action_status": "not_done",
+          "status": "negated",
+          "source_text": "No fictional agent X was administered.",
+          "source_offset": 0,
+          "fields": {
+            "event_time": {
+              "value": null,
+              "status": "missing",
+              "confidence": null,
+              "evidence": null,
+              "raw": null
+            },
+            "medication": {
+              "value": "fictional agent x",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                3,
+                20
+              ],
+              "raw": "fictional agent X"
+            },
+            "dose": {
+              "value": null,
+              "status": "missing",
+              "confidence": null,
+              "evidence": null,
+              "raw": null
+            },
+            "route": {
+              "value": null,
+              "status": "missing",
+              "confidence": null,
+              "evidence": null,
+              "raw": null
+            }
+          },
+          "review_status": "needs_human_confirmation",
+          "flags": [
+            "negated",
+            "missing_dose",
+            "missing_route",
+            "missing_time"
+          ],
+          "accepted_flags": [],
+          "manual": false
+        },
+        {
+          "event_id": "d54213b6-44c7-433f-a6b6-368d3c9c1dab",
+          "event_type": "unclassified",
+          "description": "Unclassified narrative statement",
+          "medication": null,
+          "dose": null,
+          "route": null,
+          "observation": null,
+          "event_time": null,
+          "time_source": "unknown",
+          "action_status": "unclear",
+          "status": "needs_review",
+          "source_text": "Patient-refused medication.",
+          "source_offset": 39,
+          "fields": {},
+          "review_status": "needs_human_confirmation",
+          "flags": [
+            "unclassified_statement"
+          ],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ]
+    }
+  ]
+}

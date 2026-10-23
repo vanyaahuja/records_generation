@@ -1,0 +1,239 @@
+{
+  "challenge": {
+    "cases": 8,
+    "metrics": {
+      "medication": {
+        "tp": 7,
+        "fp": 0,
+        "fn": 0,
+        "correct": 7,
+        "total": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "dose": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0,
+        "correct": 7,
+        "total": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "route": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "correct": 7,
+        "total": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "event_time": {
+        "tp": 7,
+        "fp": 0,
+        "fn": 0,
+        "correct": 11,
+        "total": 11,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "action_status": {
+        "tp": 10,
+        "fp": 0,
+        "fn": 0,
+        "correct": 10,
+        "total": 10,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "observation": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "correct": 1,
+        "total": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      }
+    },
+    "event_count_all_correct": true,
+    "fabrication_rate_on_missing": 0.0,
+    "traceability": 1.0,
+    "latency_ms": {
+      "p50": 5.39,
+      "p95": 6.53
+    },
+    "errors": []
+  },
+  "dev": {
+    "cases": 200,
+    "metrics": {
+      "medication": {
+        "tp": 200,
+        "fp": 0,
+        "fn": 0,
+        "correct": 200,
+        "total": 200,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "dose": {
+        "tp": 190,
+        "fp": 0,
+        "fn": 0,
+        "correct": 200,
+        "total": 200,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "route": {
+        "tp": 200,
+        "fp": 0,
+        "fn": 0,
+        "correct": 200,
+        "total": 200,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "event_time": {
+        "tp": 190,
+        "fp": 0,
+        "fn": 0,
+        "correct": 200,
+        "total": 200,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "action_status": {
+        "tp": 200,
+        "fp": 0,
+        "fn": 0,
+        "correct": 200,
+        "total": 200,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "observation": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "correct": 0,
+        "total": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "exact_match": 0.0
+      }
+    },
+    "event_count_all_correct": true,
+    "fabrication_rate_on_missing": 0.0,
+    "traceability": 1.0,
+    "latency_ms": {
+      "p50": 5.45,
+      "p95": 6.86
+    },
+    "errors": []
+  },
+  "held_out": {
+    "cases": 100,
+    "metrics": {
+      "medication": {
+        "tp": 100,
+        "fp": 0,
+        "fn": 0,
+        "correct": 100,
+        "total": 100,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "dose": {
+        "tp": 80,
+        "fp": 0,
+        "fn": 0,
+        "correct": 100,
+        "total": 100,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "route": {
+        "tp": 60,
+        "fp": 0,
+        "fn": 0,
+        "correct": 100,
+        "total": 100,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "event_time": {
+        "tp": 140,
+        "fp": 0,
+        "fn": 0,
+        "correct": 140,
+        "total": 140,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "action_status": {
+        "tp": 140,
+        "fp": 0,
+        "fn": 0,
+        "correct": 140,
+        "total": 140,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      },
+      "observation": {
+        "tp": 20,
+        "fp": 0,
+        "fn": 0,
+        "correct": 20,
+        "total": 20,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "exact_match": 1.0
+      }
+    },
+    "event_count_all_correct": true,
+    "fabrication_rate_on_missing": 0.0,
+    "traceability": 1.0,
+    "latency_ms": {
+      "p50": 5.15,
+      "p95": 7.4
+    },
+    "errors": []
+  }
+}

@@ -1,0 +1,666 @@
+{
+  "synthetic_audio": true,
+  "model": "tiny.en",
+  "first_nonempty_partial_ms": 1198.05,
+  "messages": [
+    {
+      "type": "partial",
+      "seq": 1,
+      "text": "at four",
+      "transcript": "at four",
+      "words": [],
+      "events": [
+        {
+          "event_id": "378ac44a-4983-487e-b12d-46c436c8658d",
+          "event_type": "unclassified",
+          "description": "Unclassified narrative statement",
+          "medication": null,
+          "dose": null,
+          "route": null,
+          "observation": null,
+          "event_time": null,
+          "time_source": "unknown",
+          "action_status": "unclear",
+          "status": "needs_review",
+          "source_text": "at four",
+          "source_offset": 0,
+          "fields": {},
+          "review_status": "needs_human_confirmation",
+          "flags": [
+            "unclassified_statement"
+          ],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ],
+      "inference_ms": 679.56,
+      "rtf": 1.132594833325129,
+      "audio_ms": 600,
+      "provisional": true,
+      "since_start_ms": 1198.05
+    },
+    {
+      "type": "partial",
+      "seq": 2,
+      "text": "at 14 o5",
+      "transcript": "at 14 o5",
+      "words": [],
+      "events": [
+        {
+          "event_id": "bb08728f-faa4-485a-bb02-315754527629",
+          "event_type": "unclassified",
+          "description": "Unclassified narrative statement",
+          "medication": null,
+          "dose": null,
+          "route": null,
+          "observation": null,
+          "event_time": null,
+          "time_source": "unknown",
+          "action_status": "unclear",
+          "status": "needs_review",
+          "source_text": "at 14 o5",
+          "source_offset": 0,
+          "fields": {},
+          "review_status": "needs_human_confirmation",
+          "flags": [
+            "unclassified_statement"
+          ],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ],
+      "inference_ms": 642.77,
+      "rtf": 0.5356407499736331,
+      "audio_ms": 1200,
+      "provisional": true,
+      "since_start_ms": 1842.49
+    },
+    {
+      "type": "partial",
+      "seq": 3,
+      "text": "at 1405.",
+      "transcript": "at 1405.",
+      "words": [],
+      "events": [
+        {
+          "event_id": "a7d2910f-044f-460e-b7ee-449e922dcc57",
+          "event_type": "unclassified",
+          "description": "Unclassified narrative statement",
+          "medication": null,
+          "dose": null,
+          "route": null,
+          "observation": null,
+          "event_time": "14:05",
+          "time_source": "reported",
+          "action_status": "unclear",
+          "status": "needs_review",
+          "source_text": "at 1405.",
+          "source_offset": 0,
+          "fields": {},
+          "review_status": "needs_human_confirmation",
+          "flags": [
+            "unclassified_statement"
+          ],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ],
+      "inference_ms": 710.52,
+      "rtf": 0.39473233333814683,
+      "audio_ms": 1800,
+      "provisional": true,
+      "since_start_ms": 2558.4
+    },
+    {
+      "type": "partial",
+      "seq": 4,
+      "text": "at 1405. Game 5.",
+      "transcript": "at 1405. Game 5.",
+      "words": [],
+      "events": [
+        {
+          "event_id": "4a030b75-a014-43b3-a881-b10d05a95d2f",
+          "event_type": "unclassified",
+          "description": "Unclassified narrative statement",
+          "medication": null,
+          "dose": null,
+          "route": null,
+          "observation": null,
+          "event_time": "14:05",
+          "time_source": "reported",
+          "action_status": "unclear",
+          "status": "needs_review",
+          "source_text": "at 1405. Game 5.",
+          "source_offset": 0,
+          "fields": {},
+          "review_status": "needs_human_confirmation",
+          "flags": [
+            "unclassified_statement"
+          ],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ],
+      "inference_ms": 623.47,
+      "rtf": 0.2597786666592583,
+      "audio_ms": 2400,
+      "provisional": true,
+      "since_start_ms": 3182.42
+    },
+    {
+      "type": "partial",
+      "seq": 5,
+      "text": "At 1405, gave 5 milligrams.",
+      "transcript": "At 1405, gave 5 milligrams.",
+      "words": [],
+      "events": [
+        {
+          "event_id": "c20029e3-47ec-4fbf-9714-b4706d8f8e26",
+          "event_type": "unclassified",
+          "description": "Unclassified narrative statement",
+          "medication": null,
+          "dose": null,
+          "route": null,
+          "observation": null,
+          "event_time": "14:05",
+          "time_source": "reported",
+          "action_status": "unclear",
+          "status": "needs_review",
+          "source_text": "At 1405, gave 5 milligrams.",
+          "source_offset": 0,
+          "fields": {},
+          "review_status": "needs_human_confirmation",
+          "flags": [
+            "unclassified_statement",
+            "unknown_drug"
+          ],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ],
+      "inference_ms": 612.14,
+      "rtf": 0.20404686666248986,
+      "audio_ms": 3000,
+      "provisional": true,
+      "since_start_ms": 3796.96
+    },
+    {
+      "type": "partial",
+      "seq": 6,
+      "text": "At 14.05, gave 5 milligrams of thick",
+      "transcript": "At 14.05, gave 5 milligrams of thick",
+      "words": [],
+      "events": [
+        {
+          "event_id": "ca0a8ebf-8afb-4d10-a4ad-f1877db838ec",
+          "event_type": "unclassified",
+          "description": "Unclassified narrative statement",
+          "medication": null,
+          "dose": null,
+          "route": null,
+          "observation": null,
+          "event_time": "14:05",
+          "time_source": "reported",
+          "action_status": "unclear",
+          "status": "needs_review",
+          "source_text": "At 14.05, gave 5 milligrams of thick",
+          "source_offset": 0,
+          "fields": {},
+          "review_status": "needs_human_confirmation",
+          "flags": [
+            "unclassified_statement",
+            "unknown_drug"
+          ],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ],
+      "inference_ms": 583.34,
+      "rtf": 0.16203805555253187,
+      "audio_ms": 3600,
+      "provisional": true,
+      "since_start_ms": 4382.37
+    },
+    {
+      "type": "partial",
+      "seq": 7,
+      "text": "At 14.05, gave 5 milligrams of fictional agent.",
+      "transcript": "At 14.05, gave 5 milligrams of fictional agent.",
+      "words": [],
+      "events": [
+        {
+          "event_id": "7f529194-4fe0-4cc5-ba9c-17c9372fdc13",
+          "event_type": "unclassified",
+          "description": "Unclassified narrative statement",
+          "medication": null,
+          "dose": null,
+          "route": null,
+          "observation": null,
+          "event_time": "14:05",
+          "time_source": "reported",
+          "action_status": "unclear",
+          "status": "needs_review",
+          "source_text": "At 14.05, gave 5 milligrams of fictional agent.",
+          "source_offset": 0,
+          "fields": {},
+          "review_status": "needs_human_confirmation",
+          "flags": [
+            "unclassified_statement",
+            "unknown_drug",
+            "suggested_medication:fictional agent y"
+          ],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ],
+      "inference_ms": 645.19,
+      "rtf": 0.15361583334327275,
+      "audio_ms": 4200,
+      "provisional": true,
+      "since_start_ms": 5031.01
+    },
+    {
+      "type": "partial",
+      "seq": 8,
+      "text": "At 1405, gave 5 milligrams of fictional agent X in",
+      "transcript": "At 1405, gave 5 milligrams of fictional agent X in",
+      "words": [],
+      "events": [
+        {
+          "event_id": "4967b558-73f1-47bf-a273-b47d15bd00e0",
+          "event_type": "medication_administration",
+          "description": "fictional agent x",
+          "medication": "fictional agent x",
+          "dose": {
+            "value": 5.0,
+            "unit": "mg",
+            "source_text": "5 milligrams"
+          },
+          "route": null,
+          "observation": null,
+          "event_time": "14:05",
+          "time_source": "reported",
+          "action_status": "completed",
+          "status": "reported",
+          "source_text": "At 1405, gave 5 milligrams of fictional agent X in",
+          "source_offset": 0,
+          "fields": {
+            "event_time": {
+              "value": "14:05",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                0,
+                7
+              ],
+              "raw": "At 1405"
+            },
+            "medication": {
+              "value": "fictional agent x",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                30,
+                47
+              ],
+              "raw": "fictional agent X"
+            },
+            "dose": {
+              "value": {
+                "value": 5.0,
+                "unit": "mg",
+                "source_text": "5 milligrams"
+              },
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                14,
+                26
+              ],
+              "raw": "5 milligrams"
+            },
+            "route": {
+              "value": null,
+              "status": "missing",
+              "confidence": null,
+              "evidence": null,
+              "raw": null
+            }
+          },
+          "review_status": "needs_human_confirmation",
+          "flags": [
+            "missing_route"
+          ],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ],
+      "inference_ms": 809.92,
+      "rtf": 0.16873314583790489,
+      "audio_ms": 4800,
+      "provisional": true,
+      "since_start_ms": 5843.47
+    },
+    {
+      "type": "partial",
+      "seq": 9,
+      "text": "At 1405, gave 5 milligrams of fictional agent X intravenously.",
+      "transcript": "At 1405, gave 5 milligrams of fictional agent X intravenously.",
+      "words": [],
+      "events": [
+        {
+          "event_id": "fb67d724-b9d1-45d6-bccd-d7dfa56d58b8",
+          "event_type": "medication_administration",
+          "description": "fictional agent x",
+          "medication": "fictional agent x",
+          "dose": {
+            "value": 5.0,
+            "unit": "mg",
+            "source_text": "5 milligrams"
+          },
+          "route": "intravenous",
+          "observation": null,
+          "event_time": "14:05",
+          "time_source": "reported",
+          "action_status": "completed",
+          "status": "reported",
+          "source_text": "At 1405, gave 5 milligrams of fictional agent X intravenously.",
+          "source_offset": 0,
+          "fields": {
+            "event_time": {
+              "value": "14:05",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                0,
+                7
+              ],
+              "raw": "At 1405"
+            },
+            "medication": {
+              "value": "fictional agent x",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                30,
+                47
+              ],
+              "raw": "fictional agent X"
+            },
+            "dose": {
+              "value": {
+                "value": 5.0,
+                "unit": "mg",
+                "source_text": "5 milligrams"
+              },
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                14,
+                26
+              ],
+              "raw": "5 milligrams"
+            },
+            "route": {
+              "value": "intravenous",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                48,
+                61
+              ],
+              "raw": "intravenously"
+            }
+          },
+          "review_status": "needs_human_confirmation",
+          "flags": [],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ],
+      "inference_ms": 617.9,
+      "rtf": 0.11442561111093877,
+      "audio_ms": 5400,
+      "provisional": true,
+      "since_start_ms": 6463.13
+    },
+    {
+      "type": "partial",
+      "seq": 10,
+      "text": "At 14.05, gave 5 milligrams of fictional agent X intravenously.",
+      "transcript": "At 14.05, gave 5 milligrams of fictional agent X intravenously.",
+      "words": [],
+      "events": [
+        {
+          "event_id": "595694e8-abaf-4b81-9f88-32750878e3bd",
+          "event_type": "medication_administration",
+          "description": "fictional agent x",
+          "medication": "fictional agent x",
+          "dose": {
+            "value": 5.0,
+            "unit": "mg",
+            "source_text": "5 milligrams"
+          },
+          "route": "intravenous",
+          "observation": null,
+          "event_time": "14:05",
+          "time_source": "reported",
+          "action_status": "completed",
+          "status": "reported",
+          "source_text": "At 14.05, gave 5 milligrams of fictional agent X intravenously.",
+          "source_offset": 0,
+          "fields": {
+            "event_time": {
+              "value": "14:05",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                0,
+                8
+              ],
+              "raw": "At 14.05"
+            },
+            "medication": {
+              "value": "fictional agent x",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                31,
+                48
+              ],
+              "raw": "fictional agent X"
+            },
+            "dose": {
+              "value": {
+                "value": 5.0,
+                "unit": "mg",
+                "source_text": "5 milligrams"
+              },
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                15,
+                27
+              ],
+              "raw": "5 milligrams"
+            },
+            "route": {
+              "value": "intravenous",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                49,
+                62
+              ],
+              "raw": "intravenously"
+            }
+          },
+          "review_status": "needs_human_confirmation",
+          "flags": [],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ],
+      "inference_ms": 598.36,
+      "rtf": 0.09972676666802727,
+      "audio_ms": 6000,
+      "provisional": true,
+      "since_start_ms": 7063.21
+    },
+    {
+      "type": "final",
+      "seq": 11,
+      "text": "At 14.05, gave 5 milligrams of fictional agent X intravenously.",
+      "transcript": "At 14.05, gave 5 milligrams of fictional agent X intravenously.",
+      "words": [
+        {
+          "w": "At",
+          "start": 0.0,
+          "end": 0.56,
+          "prob": 0.5940114855766296
+        },
+        {
+          "w": "14",
+          "start": 0.56,
+          "end": 0.9,
+          "prob": 0.8153585195541382
+        },
+        {
+          "w": ".05,",
+          "start": 0.9,
+          "end": 1.42,
+          "prob": 0.695265382528305
+        },
+        {
+          "w": "gave",
+          "start": 2.0,
+          "end": 2.3,
+          "prob": 0.7671442031860352
+        },
+        {
+          "w": "5",
+          "start": 2.3,
+          "end": 2.78,
+          "prob": 0.6964769959449768
+        },
+        {
+          "w": "milligrams",
+          "start": 2.78,
+          "end": 3.26,
+          "prob": 0.8316989739735922
+        },
+        {
+          "w": "of",
+          "start": 3.26,
+          "end": 3.6,
+          "prob": 0.9976500868797302
+        },
+        {
+          "w": "fictional",
+          "start": 3.6,
+          "end": 3.96,
+          "prob": 0.9793339371681213
+        },
+        {
+          "w": "agent",
+          "start": 3.96,
+          "end": 4.36,
+          "prob": 0.6934672594070435
+        },
+        {
+          "w": "X",
+          "start": 4.36,
+          "end": 4.78,
+          "prob": 0.6774317622184753
+        },
+        {
+          "w": "intravenously.",
+          "start": 4.78,
+          "end": 5.46,
+          "prob": 0.989037275314331
+        }
+      ],
+      "events": [
+        {
+          "event_id": "b0159daf-9bd8-45df-ad0f-deba45f75eee",
+          "event_type": "medication_administration",
+          "description": "fictional agent x",
+          "medication": "fictional agent x",
+          "dose": {
+            "value": 5.0,
+            "unit": "mg",
+            "source_text": "5 milligrams"
+          },
+          "route": "intravenous",
+          "observation": null,
+          "event_time": "14:05",
+          "time_source": "reported",
+          "action_status": "completed",
+          "status": "reported",
+          "source_text": "At 14.05, gave 5 milligrams of fictional agent X intravenously.",
+          "source_offset": 0,
+          "fields": {
+            "event_time": {
+              "value": "14:05",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                0,
+                8
+              ],
+              "raw": "At 14.05"
+            },
+            "medication": {
+              "value": "fictional agent x",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                31,
+                48
+              ],
+              "raw": "fictional agent X"
+            },
+            "dose": {
+              "value": {
+                "value": 5.0,
+                "unit": "mg",
+                "source_text": "5 milligrams"
+              },
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                15,
+                27
+              ],
+              "raw": "5 milligrams"
+            },
+            "route": {
+              "value": "intravenous",
+              "status": "extracted",
+              "confidence": null,
+              "evidence": [
+                49,
+                62
+              ],
+              "raw": "intravenously"
+            }
+          },
+          "review_status": "needs_human_confirmation",
+          "flags": [],
+          "accepted_flags": [],
+          "manual": false
+        }
+      ],
+      "inference_ms": 693.78,
+      "rtf": 0.1119007903241342,
+      "audio_ms": 6200,
+      "provisional": false,
+      "since_start_ms": 7759.56
+    },
+    {
+      "type": "complete",
+      "transcript": "At 14.05, gave 5 milligrams of fictional agent X intravenously.",
+      "since_start_ms": 7760.06
+    }
+  ]
+}

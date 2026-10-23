@@ -1,0 +1,677 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Word": {
+      "additionalProperties": false,
+      "properties": {
+        "w": {
+          "title": "W",
+          "type": "string"
+        },
+        "start": {
+          "minimum": 0,
+          "title": "Start",
+          "type": "number"
+        },
+        "end": {
+          "minimum": 0,
+          "title": "End",
+          "type": "number"
+        },
+        "prob": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Prob",
+          "type": "number"
+        }
+      },
+      "required": [
+        "w",
+        "start",
+        "end",
+        "prob"
+      ],
+      "title": "Word",
+      "type": "object"
+    },
+    "ExtractRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "case_id": {
+          "default": "DEMO-001",
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Case Id",
+          "type": "string"
+        },
+        "responder_id": {
+          "default": "DEMO-RESPONDER",
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Responder Id",
+          "type": "string"
+        },
+        "encounter_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Encounter Date"
+        },
+        "tz": {
+          "default": "Asia/Kolkata",
+          "title": "Tz",
+          "type": "string"
+        },
+        "words": {
+          "items": {
+            "$ref": "#/$defs/Word"
+          },
+          "maxItems": 10000,
+          "title": "Words",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "ExtractRequest",
+      "type": "object"
+    },
+    "Dose": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "maxLength": 30,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "source_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Text"
+        }
+      },
+      "title": "Dose",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "default": null,
+          "title": "Value"
+        },
+        "status": {
+          "default": "missing",
+          "enum": [
+            "extracted",
+            "corrected",
+            "missing",
+            "needs_review"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence"
+        },
+        "raw": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw"
+        }
+      },
+      "title": "Evidence",
+      "type": "object"
+    },
+    "ClinicalEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event_type": {
+          "enum": [
+            "medication_administration",
+            "procedure",
+            "observation",
+            "unclassified"
+          ],
+          "title": "Event Type",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "medication": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Medication"
+        },
+        "dose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Dose"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "route": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Route"
+        },
+        "observation": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observation"
+        },
+        "event_time": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Event Time"
+        },
+        "time_source": {
+          "default": "unknown",
+          "enum": [
+            "reported",
+            "relative",
+            "unknown"
+          ],
+          "title": "Time Source",
+          "type": "string"
+        },
+        "action_status": {
+          "default": "unclear",
+          "enum": [
+            "completed",
+            "not_done",
+            "unclear"
+          ],
+          "title": "Action Status",
+          "type": "string"
+        },
+        "status": {
+          "default": "needs_review",
+          "enum": [
+            "reported",
+            "negated",
+            "uncertain",
+            "needs_review"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "source_text": {
+          "title": "Source Text",
+          "type": "string"
+        },
+        "source_offset": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Source Offset",
+          "type": "integer"
+        },
+        "fields": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "title": "Fields",
+          "type": "object"
+        },
+        "review_status": {
+          "default": "needs_human_confirmation",
+          "enum": [
+            "needs_human_confirmation",
+            "confirmed",
+            "corrected"
+          ],
+          "title": "Review Status",
+          "type": "string"
+        },
+        "flags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Flags",
+          "type": "array"
+        },
+        "accepted_flags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Accepted Flags",
+          "type": "array"
+        },
+        "manual": {
+          "default": false,
+          "title": "Manual",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "description",
+        "source_text"
+      ],
+      "title": "ClinicalEvent",
+      "type": "object"
+    },
+    "SaveRecordRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Case Id",
+          "type": "string"
+        },
+        "responder_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Responder Id",
+          "type": "string"
+        },
+        "narrative": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Narrative",
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/ClinicalEvent"
+          },
+          "maxItems": 500,
+          "title": "Events",
+          "type": "array"
+        },
+        "extraction_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Extraction Id"
+        },
+        "record_status": {
+          "default": "pending_review",
+          "enum": [
+            "pending_review",
+            "reviewed"
+          ],
+          "title": "Record Status",
+          "type": "string"
+        },
+        "reviewer_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewer Id"
+        },
+        "expected_version": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Version"
+        },
+        "encounter_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Encounter Date"
+        },
+        "tz": {
+          "default": "Asia/Kolkata",
+          "title": "Tz",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "responder_id",
+        "narrative",
+        "events"
+      ],
+      "title": "SaveRecordRequest",
+      "type": "object"
+    },
+    "Record": {
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "title": "Case Id",
+          "type": "string"
+        },
+        "responder_id": {
+          "title": "Responder Id",
+          "type": "string"
+        },
+        "narrative": {
+          "title": "Narrative",
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/ClinicalEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "record_status": {
+          "enum": [
+            "pending_review",
+            "reviewed"
+          ],
+          "title": "Record Status",
+          "type": "string"
+        },
+        "reviewer_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reviewer Id"
+        },
+        "extraction_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Extraction Id"
+        },
+        "extraction_hash": {
+          "title": "Extraction Hash",
+          "type": "string"
+        },
+        "recorded_at": {
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "updated_at": {
+          "title": "Updated At",
+          "type": "string"
+        },
+        "encounter_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Encounter Date"
+        },
+        "tz": {
+          "default": "Asia/Kolkata",
+          "title": "Tz",
+          "type": "string"
+        },
+        "model_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Model Versions",
+          "type": "object"
+        }
+      },
+      "required": [
+        "case_id",
+        "responder_id",
+        "narrative",
+        "events",
+        "record_status",
+        "reviewer_id",
+        "extraction_id",
+        "extraction_hash",
+        "recorded_at",
+        "updated_at"
+      ],
+      "title": "Record",
+      "type": "object"
+    },
+    "Transcript": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "words": {
+          "items": {
+            "$ref": "#/$defs/Word"
+          },
+          "title": "Words",
+          "type": "array"
+        },
+        "segments": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Segments",
+          "type": "array"
+        },
+        "duration": {
+          "title": "Duration",
+          "type": "number"
+        },
+        "rtf": {
+          "title": "Rtf",
+          "type": "number"
+        },
+        "inference_ms": {
+          "title": "Inference Ms",
+          "type": "number"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "language": {
+          "title": "Language",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "words",
+        "segments",
+        "duration",
+        "rtf",
+        "inference_ms",
+        "model",
+        "language"
+      ],
+      "title": "Transcript",
+      "type": "object"
+    },
+    "ErrorEnvelope": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {},
+              "type": "array"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            }
+          ],
+          "title": "Detail"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
+        }
+      },
+      "required": [
+        "detail"
+      ],
+      "title": "ErrorEnvelope",
+      "type": "object"
+    }
+  }
+}

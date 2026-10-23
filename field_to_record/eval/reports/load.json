@@ -1,0 +1,59 @@
+{
+  "note": "One local process, CPU, SQLite. Not a distributed load test. ASR measured separately.",
+  "results": [
+    {
+      "endpoint": "/v1/extract",
+      "concurrency": 1,
+      "requests": 100,
+      "requests_per_second": 232.6,
+      "p50_ms": 4.03,
+      "p95_ms": 5.11,
+      "server_p95_ms": 0.95
+    },
+    {
+      "endpoint": "/v1/extract",
+      "concurrency": 8,
+      "requests": 100,
+      "requests_per_second": 104.1,
+      "p50_ms": 50.73,
+      "p95_ms": 207.71,
+      "server_p95_ms": 9.63
+    },
+    {
+      "endpoint": "/v1/extract",
+      "concurrency": 16,
+      "requests": 100,
+      "requests_per_second": 63.2,
+      "p50_ms": 172.18,
+      "p95_ms": 529.34,
+      "server_p95_ms": 19.86
+    },
+    {
+      "endpoint": "/api/extract",
+      "concurrency": 1,
+      "requests": 100,
+      "requests_per_second": 90.7,
+      "p50_ms": 11.89,
+      "p95_ms": 13.08,
+      "server_p95_ms": 4.06
+    },
+    {
+      "endpoint": "/api/extract",
+      "concurrency": 8,
+      "requests": 100,
+      "requests_per_second": 73.1,
+      "p50_ms": 96.13,
+      "p95_ms": 179.77,
+      "server_p95_ms": 16.6
+    },
+    {
+      "endpoint": "/api/extract",
+      "concurrency": 16,
+      "requests": 100,
+      "requests_per_second": 54.6,
+      "p50_ms": 239.79,
+      "p95_ms": 504.29,
+      "server_p95_ms": 36.71
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+**/.venv/
+**/node_modules/
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.hypothesis/
+**/dist/
+**/*.sqlite3*
+**/.env
+**/test-results/
+**/playwright-report/
+**/models/*/model.bin
+**/models/*/.cache/
+**/deploy/wheels/*.whl
+**/deploy/npm-cache/*
+!**/deploy/npm-cache/.gitkeep

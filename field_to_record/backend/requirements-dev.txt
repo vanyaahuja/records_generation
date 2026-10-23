@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest>=8.3,<9
+httpx>=0.28,<1
+websockets>=14,<16
+hypothesis>=6.120,<7
+ruff>=0.12,<1

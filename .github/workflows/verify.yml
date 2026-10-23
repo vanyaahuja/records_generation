@@ -1,0 +1,45 @@
+name: Verify Field-to-Record
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: field
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: field_test
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U field -d field_test" --health-interval 5s --health-timeout 3s --health-retries 10
+    defaults:
+      run:
+        working-directory: field_to_record
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: npm, cache-dependency-path: field_to_record/frontend/package-lock.json}
+      - run: python -m venv backend/.venv
+      - run: backend/.venv/bin/python -m pip install -r backend/requirements-dev.txt -r backend/requirements-speech.txt -r backend/requirements-postgres.txt
+      - run: backend/.venv/bin/python -m ruff check backend/app backend/tests tools eval --select F
+      - run: backend/.venv/bin/python tools/contracts.py --check
+      - run: backend/.venv/bin/python -m pytest -q backend/tests
+        env:
+          TEST_POSTGRES_DSN: postgresql://field:ci-only-password@localhost:5432/field_test
+      - run: backend/.venv/bin/python eval/run.py --check
+      - run: npm ci && npm run build
+        working-directory: field_to_record/frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: field_to_record/frontend
+      - run: backend/.venv/bin/python tools/download_model.py tiny.en
+      - run: backend/.venv/bin/python -m pytest -q backend/tests/test_real_speech.py
+      - run: npm run test:e2e
+        working-directory: field_to_record/frontend
+      - run: docker compose config --quiet
+      - run: docker compose build
+      - run: docker compose up -d --wait --wait-timeout 120
+      - run: backend/.venv/bin/python tools/container_smoke.py
+      - run: docker compose down
+        if: always()

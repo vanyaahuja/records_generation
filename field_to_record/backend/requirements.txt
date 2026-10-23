@@ -4,4 +4,6 @@ pydantic>=2.8,<3.0
 python-multipart>=0.0.9
 reportlab>=4.2,<5.0
 python-dotenv>=1.0,<2.0
-# Optional: pip install faster-whisper
+jsonschema>=4.23,<5
+tzdata>=2025.1
+cryptography>=44,<49

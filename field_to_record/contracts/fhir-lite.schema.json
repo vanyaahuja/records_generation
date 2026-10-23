@@ -1,0 +1,51 @@
+{
+  "type": "object",
+  "required": [
+    "resourceType",
+    "type",
+    "entry"
+  ],
+  "properties": {
+    "resourceType": {
+      "const": "Bundle"
+    },
+    "type": {
+      "const": "collection"
+    },
+    "entry": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "resource"
+        ],
+        "properties": {
+          "resource": {
+            "type": "object",
+            "required": [
+              "resourceType",
+              "id",
+              "extension"
+            ],
+            "properties": {
+              "resourceType": {
+                "enum": [
+                  "MedicationAdministration",
+                  "Observation",
+                  "Procedure",
+                  "Basic"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "extension": {
+                "type": "array"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
