@@ -52,6 +52,26 @@ export default function App() {
     [audit, setAudit] = useState(""),
     [original, setOriginal] = useState(""),
     [revisions, setRevisions] = useState<Saved["revisions"]>([]);
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("theme");
+      if (saved === "light" || saved === "dark") return saved;
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+    }
+    return "light";
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
   const speech = useRef<LiveAudio | null>(null),
     noteRef = useRef(state.narrative),
     eventsRef = useRef(state.events);
@@ -370,53 +390,64 @@ export default function App() {
       </a>
       <header className="topbar">
         <a className="brand" href="/">
-          <img src="/icon.svg" width="38" height="38" alt="" />
-          <span>
-            Field<span className="brand-light">to</span>Record
-            <small>OFFLINE CLINICAL CAPTURE</small>
-          </span>
+          <div className="brand-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+          </div>
+          <span>Field to Record</span>
+          <span className="brand-badge">Clinical</span>
         </a>
-        <div className="top-status">
-          <span className={`status-dot ${apiReady ? "good" : ""}`} />
-          {apiReady ? "Local API ready" : "Connecting to local API"}
-          <span className="separator" />
-          <span>{network ? "Network available" : "Network disconnected"}</span>
+        <div className="top-actions">
+          <div className="status-badge">
+            <span className={`status-dot ${apiReady ? "good" : ""}`} />
+            <span>{apiReady ? "Local API ready" : "Connecting..."}</span>
+          </div>
+          <div className="status-badge">
+            <span className={`status-dot ${network ? "good" : ""}`} />
+            <span>{network ? "Network available" : "Offline"}</span>
+          </div>
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+              </svg>
+            )}
+          </button>
         </div>
       </header>
       <main id="workspace">
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">FROM THE SCENE TO THE RECORD</div>
-            <h1>
-              Capture clearly.
-              <br />
-              <span>Keep every fact traceable.</span>
-            </h1>
-            <p>
-              Speak or type. Inspect the evidence. Hand over a reviewed record.
-            </p>
+        <div className="stats-row">
+          <div className="stat-card">
+            <span className="stat-label">Typed request</span>
+            <div className="stat-value">
+              {latency === null ? "—" : Math.round(latency)}
+              <span className="stat-unit"> ms</span>
+            </div>
           </div>
-          <div className="metric-grid">
-            <div>
-              <span>Typed request</span>
-              <strong>
-                {latency === null ? "—" : Math.round(latency)}
-                <small> ms</small>
-              </strong>
+          <div className="stat-card">
+            <span className="stat-label">Last ASR inference</span>
+            <div className="stat-value">
+              {asrLatency === null ? "—" : Math.round(asrLatency)}
+              <span className="stat-unit"> ms</span>
             </div>
-            <div>
-              <span>Last ASR inference</span>
-              <strong>
-                {asrLatency === null ? "—" : Math.round(asrLatency)}
-                <small> ms</small>
-              </strong>
-            </div>
-            <div>
-              <span>Events accepted</span>
-              <strong>
-                {reviewedCount}
-                <small> / {state.events.length}</small>
-              </strong>
+          </div>
+          <div className="stat-card">
+            <span className="stat-label">Events accepted</span>
+            <div className="stat-value">
+              {reviewedCount}
+              <span className="stat-unit"> / {state.events.length}</span>
             </div>
           </div>
         </div>
@@ -816,11 +847,6 @@ export default function App() {
               </div>
             ) : null}
           </section>
-        </div>
-        <div className="notice" role="status">
-          <strong>Local workspace</strong>
-          <p>{notice}</p>
-          {busy ? <span className="loading-dot" /> : null}
         </div>
         <footer>
           Hackathon prototype · Not for clinical use · FHIR-lite is not a

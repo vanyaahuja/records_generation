@@ -1,8 +1,64 @@
 :root {
-  --bg: #f3f6f8;
-  --ink: #18343e;
-  --muted: #627980;
-  --primary: #103f46;
-  --border: #dce5e8;
+  --background: #f8fafc;
+  --foreground: #020817;
+  --card: #ffffff;
+  --card-foreground: #020817;
+  --popover: #ffffff;
+  --popover-foreground: #020817;
+  --primary: #0f766e;
+  --primary-hover: #0d655e;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-hover: #e2e8f0;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-hover: #e2e8f0;
+  --accent-foreground: #0f172a;
+  --destructive: #ef4444;
+  --destructive-hover: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #0f766e;
+  --radius: 0.5rem;
+
+  /* Compatibility variables */
+  --bg: var(--background);
+  --ink: var(--foreground);
+
   color-scheme: light;
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #f4f4f5;
+  --card: #121215;
+  --card-foreground: #f4f4f5;
+  --popover: #121215;
+  --popover-foreground: #f4f4f5;
+  --primary: #14b8a6;
+  --primary-hover: #0d9488;
+  --primary-foreground: #042f2e;
+  --secondary: #27272a;
+  --secondary-hover: #3f3f46;
+  --secondary-foreground: #f4f4f5;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-hover: #3f3f46;
+  --accent-foreground: #f4f4f5;
+  --destructive: #991b1b;
+  --destructive-hover: #b91c1c;
+  --destructive-foreground: #fef2f2;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #14b8a6;
+
+  /* Compatibility variables */
+  --bg: var(--background);
+  --ink: var(--foreground);
+
+  color-scheme: dark;
 }

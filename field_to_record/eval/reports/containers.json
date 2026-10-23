@@ -12,30 +12,30 @@
     "max_sessions": 4,
     "model": "speech"
   },
-  "record_id": "eb4658f1-2768-4e59-afcc-756c01b808d8",
+  "record_id": "01dcc5f5-e0b2-4ab4-9b2c-53a31114092a",
   "exports": {
     "json": 5422,
     "fhir": 3199,
-    "pdf": 3150,
+    "pdf": 3146,
     "html": 1342,
     "text": 893
   },
   "audit": {
     "valid": true,
-    "entries_verified": 11,
-    "head_hash": "9b59fb296e03ae65bde0aa1c107c759a16c713ff9cc9fcb2835d1b0021213a6a",
+    "entries_verified": 14,
+    "head_hash": "c8698a6c54850f604248564b84bdccda2477f9b5f4ea499bf5e0b50076ac2841",
     "error": null,
     "limitation": "A privileged database rewrite can recompute this chain. No external trust anchor."
   },
   "uploaded_audio": {
     "text": "At 1405, gave 5 milligrams of fictional agent X intravenously.",
     "model": "speech",
-    "inference_ms": 1589.45,
-    "rtf": 0.2474377995290731
+    "inference_ms": 2599.16,
+    "rtf": 0.40462448601839607
   },
   "stream": {
-    "first_nonempty_partial_ms": 1444.74,
+    "first_nonempty_partial_ms": 1196.67,
     "final_transcript": "At 14.05, gave 5 milligrams of fictional agent X intravenously."
   },
-  "elapsed_seconds": 11.81
+  "elapsed_seconds": 12.77
 }
