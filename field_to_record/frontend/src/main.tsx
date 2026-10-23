@@ -7,7 +7,13 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>,
 );
-if (import.meta.env.PROD && "serviceWorker" in navigator)
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    void navigator.serviceWorker.register("/sw.js");
+    navigator.serviceWorker.register("/sw.js").then((reg) => {
+      void reg.update();
+    });
   });
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    window.location.reload();
+  });
+}
