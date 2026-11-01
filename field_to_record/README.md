@@ -27,14 +27,52 @@ For manual startup, copy `backend/.env.example` to `backend/.env`, then run `uvi
 Provision `models/whisper-tiny.en` with the command above before building. Model weights are copied into the image; no runtime downloads occur.
 
 ```powershell
+cd field_to_record
 docker compose build
 docker compose up -d
 backend/.venv/Scripts/python.exe tools/container_smoke.py
+backend/.venv/Scripts/python.exe tools/container_verify.py
 ```
+
+Run `cd field_to_record` only when starting from the repository root. All other commands in this README assume the application directory.
 
 Open http://127.0.0.1:8080. Web, API and ASR are separate non-root application containers. Only the web/gateway port is published, bound to localhost. The Compose network is `internal: true`. A named volume retains SQLite data. After building and pulling images in advance, use `docker compose up --no-build --pull never -d` without networking.
 
-Optional PostgreSQL deployment and replica guidance: [SCALING.md](docs/SCALING.md). The provided local machine's Docker engine did not respond during implementation; Compose configuration validates, but local image builds and container execution are not yet verified. CI includes those checks.
+Optional PostgreSQL deployment and replica guidance: [SCALING.md](docs/SCALING.md). All three images have been built and run locally. The deployed HTTP workflow, revision conflicts, five export formats, audit verification, uploaded audio and real-time PCM WebSocket transcription passed `container_verify.py`. The latest synthetic run produced its first nonempty provisional text in 970 ms; this is one measurement, not a latency guarantee.
+
+Useful lifecycle and diagnostic commands:
+
+```powershell
+docker compose ps
+docker compose logs --tail 100 api asr web
+curl.exe http://127.0.0.1:8080/readyz
+curl.exe http://127.0.0.1:8080/api/speech/status
+docker compose restart asr
+docker compose down
+```
+
+`down` preserves the records volume. Avoid `down -v` unless deliberately deleting stored records. Open the app directly at http://127.0.0.1:8080 in a browser and allow microphone access. A running Docker engine alone does not mean this project's ASR service is ready. If status reports ready but streaming fails, check that the proxy supports WebSocket upgrades and the browser origin is allowed. The default accepted Docker origins are `http://127.0.0.1:8080` and `http://localhost:8080`.
+
+On the tested Windows machine, Docker Desktop's Windows client connection and download proxy stalled while its Linux engine remained running. `./tools/docker-desktop.ps1 compose ps` uses the installed Docker Desktop WSL client against that same engine. Substitute this wrapper for `docker` in the commands above if the Windows CLI hangs. It does not reset Docker or change unrelated containers. For wrapper arguments that collide with PowerShell options, pass `-DockerArgs @('compose','logs','--tail','100','asr')` explicitly.
+
+If container package downloads fail but host downloads work, prepare Linux amd64 caches on the host before building:
+
+```powershell
+backend/.venv/Scripts/python.exe tools/prepare_offline.py
+$env:OFFLINE_BUILD = '1'
+./tools/docker-desktop.ps1 compose build
+./tools/docker-desktop.ps1 compose up --no-build --pull never -d
+```
+
+Base images must already be available (`python:3.11-slim`, `node:22-bookworm-slim`, and `nginxinc/nginx-unprivileged:stable-alpine`). These caches and model weights are ignored by Git and must be provisioned on each build machine. Leave several GB of host disk space available: a full Windows drive can cause SQLite failures, truncated browser traces and Docker log I/O errors even while containers show as running.
+
+For a prebuilt offline demo, save the images while the build machine has sufficient disk space, then copy the archive to the demo machine:
+
+```powershell
+docker save -o field-to-record-images.tar field-to-record-api:local field-to-record-asr:local field-to-record-web:local
+docker load -i field-to-record-images.tar
+docker compose up --no-build --pull never -d
+```
 
 ## What the product does
 
@@ -64,6 +102,14 @@ npm run test:e2e
 ```
 
 `tools/verify.ps1` runs the core checks on Windows. `Makefile` provides equivalent Linux commands. Frontend tests start isolated local API/frontend servers and use synthesized audio, including a fake microphone source. They do not require a physical microphone. CI also provisions PostgreSQL and runs its integration test. Set `TEST_POSTGRES_DSN` to run that test locally.
+
+To run the browser suite against Docker instead of starting native test servers:
+
+```powershell
+cd frontend
+$env:FTR_BASE_URL = 'http://127.0.0.1:8080'
+npm run test:e2e
+```
 
 Reports live in [eval/reports](eval/reports). Synthetic gold contains 25 template families: 200 development cases, 100 cases from held-out families and eight implementation-authored challenge cases. These do not establish independent real-world accuracy. No independent wild set, noisy human-recorded dataset or clinical validation has been supplied. Literal ASR WER also penalizes spoken numbers transcribed as digits.
 

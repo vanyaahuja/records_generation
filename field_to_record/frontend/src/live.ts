@@ -75,11 +75,26 @@ export class LiveAudio {
       }
       this.onMessage(message);
     };
-    ws.onerror = () => {
-      this.onError(
-        "Local speech service is unavailable. Typed notes still work.",
-      );
-      this.release();
+    ws.onerror = async () => {
+      // Readiness distinguishes a model/startup problem from a failed WS proxy.
+      this.close();
+      let message =
+        "Cannot reach local speech. Check the ASR container logs and retry.";
+      try {
+        const response = await fetch("/api/speech/status", {
+          signal: AbortSignal.timeout(5000),
+          cache: "no-store",
+        });
+        if (response.ok) {
+          const status = await response.json();
+          message = status.ready
+            ? "Speech is ready, but the streaming connection failed. Open http://127.0.0.1:8080 directly in your browser and retry; check WebSocket proxy and allowed-origin settings."
+            : "Speech is still initializing or its model could not load. Check the ASR container logs and retry.";
+        }
+      } catch {
+        /* The original connection failure remains the useful error. */
+      }
+      this.onError(message);
     };
     ws.onclose = () => {
       if (!this.complete && !this.stopping)
