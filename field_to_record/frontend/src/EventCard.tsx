@@ -3,13 +3,21 @@ import { memo } from "react";
 import type { Event } from "./state";
 
 type Props = {
+  expanded?: boolean;
   event: Event;
   index: number;
   update: (index: number, patch: Partial<Event>) => void;
   remove: (index: number) => void;
   select: (value: [number, number]) => void;
 };
-function EventCard({ event: e, index, update, remove, select }: Props) {
+function EventCard({
+  event: e,
+  index,
+  update,
+  remove,
+  select,
+  expanded = false,
+}: Props) {
   const change = (key: keyof Event, value: unknown) =>
     update(index, {
       [key]: value,
@@ -54,7 +62,7 @@ function EventCard({ event: e, index, update, remove, select }: Props) {
               : e.event_type.replaceAll("_", " ")}
         </span>
       </div>
-      <details className="event-details" open={index === 0}>
+      <details className="event-details" open={expanded || index === 0}>
         <summary>Edit fields & inspect evidence</summary>
         <div className="form-grid three">
           <label>

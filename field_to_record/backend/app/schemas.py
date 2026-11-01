@@ -69,6 +69,7 @@ class Evidence(StrictModel):
 
 
 class ClinicalEvent(StrictModel):
+    soap_section: Literal["S", "O", "A", "P"] | None = None
     event_id: str
     event_type: Literal[
         "medication_administration", "procedure", "observation", "unclassified"
@@ -120,6 +121,7 @@ class ClinicalEvent(StrictModel):
 
 
 class SaveRecordRequest(StrictModel):
+    document_format: Literal["timeline", "soap"] = "timeline"
     patient_id: str | None = Field(default=None, max_length=100)
     case_id: str = Field(min_length=1, max_length=100)
     responder_id: str = Field(min_length=1, max_length=100)
@@ -134,6 +136,7 @@ class SaveRecordRequest(StrictModel):
 
 
 class Record(StrictModel):
+    document_format: Literal["timeline", "soap"] = "soap"
     patient: Patient | None = None
     case_id: str
     responder_id: str

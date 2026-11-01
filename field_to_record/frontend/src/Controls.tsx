@@ -141,6 +141,7 @@ export function Select({
   const keys = (event: React.KeyboardEvent) => {
     if (event.key === "Escape") {
       event.preventDefault();
+      event.stopPropagation();
       close(true);
     } else if (event.key === "Tab") {
       close();

@@ -285,6 +285,24 @@
     "ClinicalEvent": {
       "additionalProperties": false,
       "properties": {
+        "soap_section": {
+          "anyOf": [
+            {
+              "enum": [
+                "S",
+                "O",
+                "A",
+                "P"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Soap Section"
+        },
         "event_id": {
           "title": "Event Id",
           "type": "string"
@@ -455,6 +473,15 @@
     "SaveRecordRequest": {
       "additionalProperties": false,
       "properties": {
+        "document_format": {
+          "default": "timeline",
+          "enum": [
+            "timeline",
+            "soap"
+          ],
+          "title": "Document Format",
+          "type": "string"
+        },
         "patient_id": {
           "anyOf": [
             {
@@ -571,6 +598,15 @@
     "Record": {
       "additionalProperties": false,
       "properties": {
+        "document_format": {
+          "default": "soap",
+          "enum": [
+            "timeline",
+            "soap"
+          ],
+          "title": "Document Format",
+          "type": "string"
+        },
         "patient": {
           "anyOf": [
             {

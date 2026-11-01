@@ -1,3 +1,4 @@
+ARG SPEECH_REFRESH_IMAGE=field-to-record-asr:local
 FROM python:3.11-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
@@ -32,3 +33,10 @@ ARG MODEL_DIR=whisper-tiny.en
 COPY --chown=app:app models/${MODEL_DIR} /models/speech
 ENV WHISPER_MODEL_PATH=/models/speech WHISPER_CPU_THREADS=4 MAX_SPEECH_SESSIONS=4
 CMD ["uvicorn", "app.asr:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--log-config", "/app/app/logging.json"]
+
+# Optional application-only refresh after dependencies/model have been verified.
+# Ordinary clean builds continue to use the speech target above.
+FROM ${SPEECH_REFRESH_IMAGE} AS speech-refresh
+WORKDIR /app
+COPY --chown=app:app backend/app ./app
+USER app

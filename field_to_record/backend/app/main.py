@@ -31,6 +31,7 @@ from .database import (
 from .review import prepare_review
 from .pdf_generator import create_pdf
 from .docgen import fhir_bundle, render_html, render_text
+from .soap import soap_document
 from .speech import router as speech_router, resolve_whisper_model_path, engine
 
 logger = logging.getLogger("field-to-record")
@@ -184,6 +185,7 @@ def persist(req, rid=None):
             raise HTTPException(409, "A saved record cannot be reassigned to another patient.")
         patient = previous_patient
     payload = Record(
+        document_format=req.document_format,
         patient=patient,
         case_id=req.case_id,
         responder_id=req.responder_id,
@@ -257,7 +259,7 @@ def read_record(record_id: str, version: int | None = None):
     bundle = get_record(record_id, version)
     if not bundle:
         raise HTTPException(404, "Record not found.")
-    return bundle
+    return {**bundle, "soap": soap_document(bundle["record"])}
 
 
 @app.get("/api/records/{record_id}/original")
@@ -273,6 +275,8 @@ def export(record_id: str, format: str, version: int | None = None):
             json.dumps(bundle, indent=2, ensure_ascii=False),
             "application/json",
         )
+    elif format == "soap":
+        body, media = json.dumps(bundle["soap"], indent=2, ensure_ascii=False), "application/json"
     elif format == "fhir":
         body, media = (
             json.dumps(fhir_bundle(bundle), indent=2, ensure_ascii=False),

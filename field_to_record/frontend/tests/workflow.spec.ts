@@ -85,7 +85,7 @@ test("capture first, patient registration, filtered bulk review, revisions and e
   await page
     .getByRole("button", { name: "Extract events", exact: true })
     .click();
-  await expect(page.locator(".event-card")).toHaveCount(4);
+  await expect(page.locator(".soap-event-row")).toHaveCount(4);
   await page
     .getByRole("navigation", { name: "Main navigation" })
     .getByRole("button", { name: "Patient overview", exact: true })
@@ -104,14 +104,11 @@ test("capture first, patient registration, filtered bulk review, revisions and e
     page.getByRole("button", { name: "Confirm & save", exact: true }),
   ).toBeDisabled();
   await page
-    .locator(".event-card")
-    .first()
-    .getByRole("button", { name: "Source", exact: true })
-    .nth(2)
+    .getByRole("button", { name: "Source event 1", exact: true })
     .click();
   await expect(page.locator("mark")).toContainText("paracetamol");
   await choose(page, "Filter events", "blood_pressure");
-  await expect(page.locator(".event-card")).toHaveCount(1);
+  await expect(page.locator(".soap-event-row")).toHaveCount(1);
   await bulk(page);
   await expect(
     page.getByRole("button", { name: "Confirm & save", exact: true }),
@@ -134,13 +131,16 @@ test("capture first, patient registration, filtered bulk review, revisions and e
       .toString(),
   ).toBe("%PDF");
   await choose(page, "Filter events", "all");
-  await page.locator(".event-card").first().getByRole("spinbutton").fill("250");
+  await page.getByRole("button", { name: "Edit event 1", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "Edit SOAP entry" })
+    .getByRole("spinbutton")
+    .fill("250");
   await expect(
     page.getByRole("button", { name: "Confirm & save", exact: true }),
   ).toBeDisabled();
   await page
-    .locator(".event-card")
-    .first()
+    .getByRole("dialog", { name: "Edit SOAP entry" })
     .getByRole("button", { name: "Accept event", exact: true })
     .click();
   await page
@@ -178,7 +178,7 @@ test("patient chart uses saved values, metric filters and isolated histories", a
   await page
     .getByRole("button", { name: "Extract events", exact: true })
     .click();
-  await expect(page.locator(".event-card")).toHaveCount(5);
+  await expect(page.locator(".soap-event-row")).toHaveCount(5);
   await bulk(page);
   await page
     .getByRole("button", { name: "Confirm & save", exact: true })
@@ -254,7 +254,7 @@ test("mobile layout, dark mode and stale narrative invalidation", async ({
   await page
     .getByRole("button", { name: "Extract events", exact: true })
     .click();
-  await expect(page.locator(".event-card")).toHaveCount(4);
+  await expect(page.locator(".soap-event-row")).toHaveCount(4);
   await noOverflow(page);
   await page
     .getByRole("button", { name: "Back to capture", exact: true })
@@ -265,7 +265,7 @@ test("mobile layout, dark mode and stale narrative invalidation", async ({
   await page
     .getByRole("button", { name: "Extract events", exact: true })
     .click();
-  await expect(page.locator(".event-card")).toHaveCount(1);
+  await expect(page.locator(".soap-event-row")).toHaveCount(1);
   await page.getByRole("button", { name: /Switch to dark/ }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
   await page.getByRole("button", { name: /Switch to light/ }).click();
@@ -288,7 +288,7 @@ test("real audio upload is transcribed locally", async ({ page, request }) => {
   await page
     .getByRole("button", { name: "Extract events", exact: true })
     .click();
-  await expect(page.locator(".event-card")).toHaveCount(1);
+  await expect(page.locator(".soap-event-row")).toHaveCount(1);
 });
 
 test("live microphone produces text and reviewable events", async ({
@@ -321,7 +321,7 @@ test("live microphone produces text and reviewable events", async ({
   await page
     .getByRole("button", { name: "Stop & extract", exact: true })
     .click();
-  await expect(page.locator(".event-card").first()).toBeVisible({
+  await expect(page.locator(".soap-event-row").first()).toBeVisible({
     timeout: 30000,
   });
   await expect(
@@ -421,4 +421,67 @@ test("custom controls, collapsible sidebar and notifications", async ({
   await expect(page.locator(".toast.error")).toContainText(
     "Extraction unavailable",
   );
+});
+
+test("SOAP sections are tabular and unassigned statements require categorization", async ({
+  page,
+  request,
+}) => {
+  await registered(page, request);
+  await page.getByRole("button", { name: "Load example", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Extract events", exact: true })
+    .click();
+  await expect(
+    page.getByRole("table", { name: "Subjective entries" }),
+  ).toContainText("Not documented");
+  await expect(
+    page.getByRole("table", { name: "Assessment entries" }),
+  ).toContainText("Not documented");
+  await expect(
+    page
+      .getByRole("table", { name: "Objective entries" })
+      .locator(".soap-event-row"),
+  ).toHaveCount(1);
+  await expect(
+    page
+      .getByRole("table", { name: "Plan entries" })
+      .locator(".soap-event-row"),
+  ).toHaveCount(3);
+  await expect(page.locator(".event-card")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Back to capture", exact: true })
+    .click();
+  await page
+    .getByLabel("On-scene narrative", { exact: true })
+    .fill("Crew arrived on scene.");
+  await page
+    .getByRole("button", { name: "Extract events", exact: true })
+    .click();
+  await expect(
+    page.getByRole("table", { name: "Unassigned entries" }),
+  ).toBeVisible();
+  await choose(page, "SOAP section for event 1", "O");
+  await bulk(page);
+  await expect(
+    page.getByRole("button", { name: "Confirm & save", exact: true }),
+  ).toBeEnabled();
+  await page
+    .getByRole("button", { name: "Confirm & save", exact: true })
+    .click();
+  await expect(page.locator(".exports")).toBeVisible();
+  const soapLink = page.getByRole("link", { name: "SOAP", exact: true });
+  const href = await soapLink.getAttribute("href");
+  const exported = await (await request.get(href!)).json();
+  expect(
+    exported.sections.find((s: { code: string }) => s.code === "O").rows[0]
+      .source_text,
+  ).toBe("Crew arrived on scene.");
+  const recordId = href!.match(/\/api\/records\/([^/]+)\//)![1];
+  await page.goto(`/?record=${encodeURIComponent(recordId)}`);
+  await expect(
+    page.getByRole("heading", { name: "SOAP review", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".soap-event-row")).toHaveCount(1);
+  await expect(page.locator(".event-card")).toHaveCount(0);
 });

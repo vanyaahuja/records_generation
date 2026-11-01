@@ -11,9 +11,10 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
-    KeepTogether,
+    LongTable,
 )
 from .database import digest
+from .soap import soap_document
 
 
 def create_pdf(bundle):
@@ -82,60 +83,21 @@ def create_pdf(bundle):
         p("Original narrative", "Heading2"),
         p(record["narrative"]),
         Spacer(1, 8),
-        p("Time-ordered events", "Heading2"),
     ]
-    for index, event in enumerate(
-        sorted(record["events"], key=lambda e: e.get("event_time") or "99:99"), 1
-    ):
-        rows = [
-            (
-                "Action / review",
-                event["action_status"].replace("_", " ")
-                + " / "
-                + event["review_status"],
-            )
-        ]
-        if event["event_type"] == "medication_administration":
-            dose = event.get("dose") or {}
-            rows += [
-                ("Medication", event.get("medication") or "NOT DOCUMENTED"),
-                (
-                    "Dose",
-                    f"{dose['value']:g} {dose.get('unit') or 'NOT DOCUMENTED'}"
-                    if dose.get("value") is not None
-                    else "NOT DOCUMENTED",
-                ),
-                ("Route", event.get("route") or "NOT DOCUMENTED"),
-            ]
-        elif event["event_type"] == "observation":
-            obs = event.get("observation") or {}
-            unit = obs.get("unit") or "NOT DOCUMENTED"
-            value = (
-                f"{obs.get('systolic', 'NOT DOCUMENTED')}/{obs.get('diastolic', 'NOT DOCUMENTED')} {unit}"
-                if obs.get("type") == "blood_pressure"
-                else f"{obs.get('value', 'NOT DOCUMENTED')} {unit}"
-            )
-            rows.append(("Observation", value))
-        block = [
-            p(
-                f"{index}. {event.get('event_time') or 'TIME NOT DOCUMENTED'} - {event['description']}",
-                "Heading3",
-            ),
-            table(rows),
-            Spacer(1, 5),
-            p("Source: " + event["source_text"]),
-        ]
-        if event["flags"]:
-            block.append(
-                p(
-                    "Flags: "
-                    + ", ".join(event["flags"])
-                    + " | Accepted: "
-                    + (", ".join(event["accepted_flags"]) or "None")
-                )
-            )
-        block.append(Spacer(1, 9))
-        story.append(KeepTogether(block))
+    soap = soap_document(record)
+    for section in soap['sections'] + ([{'code':'—','title':'Unassigned','rows':soap['unassigned']}] if soap['unassigned'] else []):
+        story += [p(section['code']+' - '+section['title'], 'Heading2')]
+        rows = [[p(label) for label in ['Time','Entry','Value','Action / review']]]
+        for row in section['rows']:
+            rows.append([p(row['time'] or 'Not documented'),p(row['entry']),p(row['value']),p(row['action_status'].replace('_',' ')+' / '+row['review_status'].replace('_',' '))])
+        if len(rows) == 1:
+            rows.append([p('Not documented'),p(''),p(''),p('')])
+        grid = LongTable(rows,colWidths=[70,160,150,148],repeatRows=1,hAlign='LEFT')
+        grid.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f1f1f1')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,-1),.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7)]))
+        story += [grid,Spacer(1,10)]
+        for row in section['rows']:
+            if row['flags']:
+                story.append(p(row['entry']+' — Flags: '+', '.join(row['flags'])+' | Accepted: '+(', '.join(row['accepted_flags']) or 'None')))
     story += [
         p("Audit identity", "Heading2"),
         p("Record ID: " + bundle["record_id"]),

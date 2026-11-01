@@ -38,7 +38,7 @@ Run `cd field_to_record` only when starting from the repository root. All other 
 
 Open http://127.0.0.1:8080. Web, API and ASR are separate non-root application containers. Only the web/gateway port is published, bound to localhost. The Compose network is `internal: true`. A named volume retains SQLite data. After building and pulling images in advance, use `docker compose up --no-build --pull never -d` without networking.
 
-Optional PostgreSQL deployment and replica guidance: [SCALING.md](docs/SCALING.md). All three images have been built and run locally. The deployed HTTP workflow, revision conflicts, five export formats, audit verification, uploaded audio and real-time PCM WebSocket transcription passed `container_verify.py`. The latest synthetic run produced its first nonempty provisional text in 1.07 seconds; this is one measurement, not a latency guarantee.
+Optional PostgreSQL deployment and replica guidance: [SCALING.md](docs/SCALING.md). All three images have been built and run locally. The deployed HTTP workflow, revision conflicts, exports, audit verification, uploaded audio and real-time PCM WebSocket transcription passed `container_verify.py`. The latest synthetic run produced its first nonempty provisional text in 1.07 seconds; this is one measurement, not a latency guarantee.
 
 Useful lifecycle and diagnostic commands:
 
@@ -66,7 +66,14 @@ $env:OFFLINE_BUILD = '1'
 
 Base images must already be available (`python:3.11-slim`, `node:22-bookworm-slim`, and `nginxinc/nginx-unprivileged:stable-alpine`). These caches and model weights are ignored by Git and must be provisioned on each build machine. Leave several GB of host disk space available: a full Windows drive can cause SQLite failures, truncated browser traces and Docker log I/O errors even while containers show as running.
 
-During verification the host drive filled, and Docker continued returning filesystem I/O errors after space was freed. Restarting Docker Desktop restored healthy services; this interrupts all running Docker workloads, so coordinate the restart first. The app's records volume survived. The current backend suite passes 114 tests, including patient isolation and PostgreSQL 16 integration. All six browser scenarios cover patient registration, filtered bulk review, revisions/exports, data-driven charts, mobile themes, uploaded audio and real microphone streaming. The microphone integration test waits for an entire fixture’s worth of transmitted PCM rather than relying on probabilistic partial wording. CI targets PostgreSQL 17.
+During verification the host drive filled, and Docker continued returning filesystem I/O errors after space was freed. Restarting Docker Desktop restored healthy services; this interrupts all running Docker workloads, so coordinate the restart first. The app's records volume survived. The current backend suite passes 118 tests, including patient isolation, source-only SOAP and PostgreSQL 16 integration. All seven browser scenarios cover patient registration, filtered bulk review, SOAP tables, revisions/exports, data-driven charts, mobile themes, uploaded audio and real microphone streaming. The microphone integration test waits for an entire fixture’s worth of transmitted PCM rather than relying on probabilistic partial wording. CI targets PostgreSQL 17.
+
+For application-only ASR updates, an optional refresh target reuses an already built and verified local speech image and model. Use a normal `docker compose build asr` whenever dependencies or model weights change:
+
+```powershell
+docker build --target speech-refresh -f backend/Dockerfile -t field-to-record-asr:local .
+docker compose up --no-build --pull never -d
+```
 
 For a prebuilt offline demo, save the images while the build machine has sufficient disk space, then copy the archive to the demo machine:
 
@@ -80,9 +87,23 @@ docker compose up --no-build --pull never -d
 
 The interface opens directly in **Capture note**, with an empty voice/text workspace. Speak the full paragraph, then use **Stop & extract** to review categorized events. Use **New patient** to register a synthetic name, age and gender, or select an existing patient. You may capture before selecting a patient, but the UI requires a patient before saving. Switching patients clears the current workspace after confirmation; saved notes stay in that patient's history. Patient profiles and record links are persisted in the same local storage service, and saved revisions retain the patient snapshot. Existing unassigned records remain readable in the record library.
 
-**Review events** provides medication, procedure, observation, blood-pressure, heart-rate and other vital filters. **Accept all events** opens a confirmation covering the entire note, including hidden categories. When unresolved flags exist, it lists them and requires explicit acknowledgment before bulk acceptance. Editing an accepted field resets that event's review. **Confirm & save** remains a separate final action enforced by backend review validation.
+**SOAP review** displays events as table rows under **Subjective, Objective, Assessment and Plan**, with time, entry, details, action, review and tools columns. Measurements default to Objective; documented medications and procedures appear in Plan with their original action status. Explicit source headings and reviewer corrections can change the section. Empty sections say **Not documented**; the app does not infer diagnoses or recommend treatment. Unassigned statements require a section before saving a reviewed SOAP note. Source links highlight the original words; Edit opens an optional field editor. Text, HTML and PDF exports use the same section tables; SOAP JSON retains source offsets and review flags.
 
-**Patient overview** shows that patient's latest 100 saved notes, event counts, category breakdown and observation charts. Blood pressure uses separate systolic/diastolic lines; other metrics use their own units. Filters select the observation and encounter date. Points use actual reported times, with accessible reading tables and tooltips; single readings show a point rather than an invented trend. Draft readings are labeled. Unsupported units, ambiguous or missing times, negated actions and missing values are omitted from plots. Charts describe documentation, not clinical status. The directory lists the latest 1,000 profiles; duplicate names remain distinct IDs. [Capture preview](docs/images/capture-dashboard.png) · [Dashboard preview](docs/images/patient-dashboard.png). The interface uses rounded, borderless cards, a collapsible icon sidebar, locally bundled Solar icons and a compact light dashboard; dark mode remains available. Custom dropdowns support keyboard navigation, searchable patient selection, outside-click/Escape dismissal and viewport-aware menus. Custom toasts and the notification panel retain up to 25 messages in memory for the current session; messages are not sent to an external service. Charts include mint observation trends, actual per-date count sparklines, event-distribution segments and review-flag frequencies. The activity panel shows the actual fraction of accepted events for each note; it does not imply clinical risk. No chart library, remote font, runtime icon API or external analytics request is required. Solar icons are by 480 Design, supplied through Iconify under CC BY 4.0; attribution is available through the UI's [Credits](frontend/public/credits.html) link. `tools/vendor_solar.py` is an optional online regeneration tool; ordinary builds use committed SVG data.
+Medication, procedure, vital-sign and SOAP-section filters keep review compact. **Accept all events** opens a confirmation covering the entire note, including hidden categories. When unresolved flags exist, it lists them and requires explicit acknowledgment before bulk acceptance. Editing an accepted field resets that event's review. **Confirm & save** remains a separate final action enforced by backend review validation.
+
+**Patient overview** shows that patient's latest 100 saved notes, event counts, category breakdown and observation charts. Blood pressure uses separate systolic/diastolic lines; other metrics use their own units. Filters select the observation and encounter date. Points use actual reported times, with accessible reading tables and tooltips; multi-day axes show dates, and single readings show a point rather than an invented trend. Draft readings are labeled. Unsupported units, ambiguous or missing times, negated actions and missing values are omitted from plots. Charts describe documentation, not clinical status. The directory lists the latest 1,000 profiles; duplicate names remain distinct IDs. [Capture preview](docs/images/capture-dashboard.png) · [Mock-patient dashboard](docs/images/mock-patient-dashboard.png) · [SOAP review](docs/images/soap-review.png). The interface uses rounded, borderless cards, a collapsible icon sidebar, locally bundled Solar icons and black-and-white light/dark themes. Custom dropdowns support keyboard navigation, searchable patient selection, outside-click/Escape dismissal and viewport-aware menus. Custom toasts and the notification panel retain up to 25 messages in memory for the current session; messages are not sent to an external service. Charts include grayscale observation trends, actual per-date count sparklines, event-distribution segments and review-flag frequencies. The activity panel shows the actual fraction of accepted events for each note; it does not imply clinical risk. No chart library, remote font, runtime icon API or external analytics request is required. Solar icons are by 480 Design, supplied through Iconify under CC BY 4.0; attribution is available through the UI's [Credits](frontend/public/credits.html) link. `tools/vendor_solar.py` is an optional online regeneration tool; ordinary builds use committed SVG data.
+
+Direct links open a patient dashboard at `/?patient=PATIENT_ID&view=dashboard` or a saved SOAP note at `/?record=RECORD_ID`.
+
+### Populate a synthetic dashboard
+
+Create/select a synthetic patient first, then use its full ID from `/api/patients`:
+
+```powershell
+backend/.venv/Scripts/python.exe tools/seed_demo_data.py --patient-id PATIENT_ID --notes 20 --end-date 2026-11-01
+```
+
+This creates 20 clearly labeled draft notes across ten days: **100 vital readings** (20 each of blood pressure, heart rate, SpO2, respiratory rate and temperature), plus nine documented synthetic interventions, for **109 events** total. Missing medication doses remain flagged. It never marks mock events as human-reviewed. Re-running skips existing `MOCK-VIS-*` cases for that patient. An optional `--repair-mock-overlaps` appends revisions removing legacy overlapping oxygen-saturation medication candidates only from this generator's labeled, pending-review mock drafts; original extractions and audit entries remain intact.
 
 - Live mono PCM audio through an AudioWorklet and WebSocket; provisional text and event candidates appear during speech.
 - Warm local faster-whisper inference with bounded concurrency and buffering. Default: tiny.en int8 on CPU, 600 ms provisional interval, 700 ms silence endpoint.
@@ -91,8 +112,8 @@ The interface opens directly in **Capture note**, with an empty voice/text works
 - Exact source offsets and raw evidence for extracted values. Missing values remain null; unknown drug suggestions never silently replace names.
 - Per-event review and explicit acknowledgment of unresolved flags. Backend rejects stale narrative, missing review, invalid values and conflicting record versions.
 - Immutable original extraction, append-only saved revisions, hash-linked audit entries and chain verification including the original extraction hash.
-- Search/reopen, revision history, and revision-specific JSON, FHIR-lite, PDF, HTML and text exports.
-- Precached PWA shell, responsive interface, memoized event cards, same-origin API requests and compact runtime bundle.
+- Search/reopen, revision history, and revision-specific JSON, SOAP JSON, FHIR-lite, PDF, HTML and text exports.
+- Precached PWA shell, responsive SOAP tables, same-origin API requests and compact runtime bundle.
 
 ## Verification
 
@@ -147,10 +168,10 @@ The chain is tamper-evident against partial changes. A privileged database owner
 - `POST /api/extract` persists the original extraction and returns `extraction_id`
 - `POST /v1/extract` is stateless NLU for evaluation/worker use
 - `POST /api/transcribe`, `WS /api/live`, `GET /api/speech/status`
-- `POST /api/records`, `PUT /api/records/{id}` with `expected_version`; optional `patient_id` for backwards-compatible API use; existing records cannot be reassigned
+- `POST /api/records`, `PUT /api/records/{id}` with `expected_version`; optional `patient_id` for backwards-compatible API use; existing records cannot be reassigned. The UI sends `document_format: "soap"`; older API clients default to `"timeline"`. Reviewed SOAP requests require all events to have a section.
 - `GET /api/records?q=...`, `GET /api/records/{id}?version=...`
 - `GET /api/records/{id}/original`
-- `GET /api/records/{id}/json|fhir|pdf|html|text?version=...`
+- `GET /api/records/{id}/json|soap|fhir|pdf|html|text?version=...`; record reads also include a derived `soap` view without altering audited payloads
 - `GET /api/audit/verify`
 
 Contract sources: [contracts](contracts), generated by `tools/contracts.py`. [Implementation decisions](docs/decisions.md), [plan status](docs/PLAN_STATUS.md), and [scaling limits](docs/SCALING.md) explicitly identify differences from the original plan and remaining verification.

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from .normalize import NUM, number, UNIT_ALIASES
 from .schemas import ClinicalEvent, Dose, Evidence
 
-VERSION = "rules-2.0"
+VERSION = "rules-2.1"
 DATA = next(
     parent / "data/lexicons/drugs.json"
     for parent in Path(__file__).resolve().parents
@@ -313,17 +313,19 @@ def extract_events(text, words=None):
             last_time = tm
             inherited_flags = [f for f in time_flags if f == "ambiguous_am_pm"]
         meds, procs = list(DRUG_RE.finditer(source)), list(PROC_RE.finditer(source))
-        matches = [
-            ("medication_administration", m, ALIASES[m.group().lower()])
-            for m in meds
-            if not any(p.start() <= m.start() < p.end() for p in procs)
-        ]
-        matches += [("procedure", m, m.group()) for m in procs]
-        matches += [
+        observations = [
             ("observation", m, (kind, unit))
             for kind, pattern, unit in OBS_PATTERNS
             for m in pattern.finditer(source)
         ]
+        matches = [
+            ("medication_administration", m, ALIASES[m.group().lower()])
+            for m in meds
+            if not any(p.start() <= m.start() < p.end() for p in procs)
+            and not any(o.start() <= m.start() < o.end() for _, o, _ in observations)
+        ]
+        matches += [("procedure", m, m.group()) for m in procs]
+        matches += observations
         matches.sort(key=lambda v: v[1].start())
         if not matches:
             flags = ["unclassified_statement", *time_flags]
@@ -474,4 +476,8 @@ def extract_events(text, words=None):
                 events[i - 1].flags = list(
                     dict.fromkeys(events[i - 1].flags + ["conflicting_values"])
                 )
+    from .soap import classify_event
+    for event in events:
+        event.soap_section = classify_event(event.model_dump())
+        event.flags = list(dict.fromkeys(event.flags + required_flags(event)))
     return events

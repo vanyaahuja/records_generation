@@ -441,7 +441,9 @@ export function PatientDashboard({
                     <strong>{note.label}</strong>
                     <span>{percent}%</span>
                   </div>
-                  <small>{note.date} · reviewed</small>
+                  <small>
+                    {note.date} · {accepted}/{note.events.length} accepted
+                  </small>
                   <div className="activity-track">
                     <span
                       style={{
@@ -743,6 +745,14 @@ function ObservationChart({
       ? 320
       : 54 + ((timestamps[i] - first) / (last - first)) * 566;
   const y = (v: number) => 180 - ((v - min) / (max - min)) * 150;
+  const tickIndexes = new Set([
+    0,
+    ...[0.25, 0.5, 0.75].map((n) => Math.round((points.length - 1) * n)),
+    points.length - 1,
+  ]);
+  const multipleDays = points.some(
+    (p) => p.time.slice(0, 10) !== points[0].time.slice(0, 10),
+  );
   const line = (secondary = false) =>
     points
       .map((p, i) => `${x(i)},${y(secondary ? p.secondary! : p.value)}`)
@@ -820,9 +830,9 @@ function ObservationChart({
                   aria-label={`${p.label}: diastolic ${p.secondary} ${p.unit}`}
                 ></circle>
               ) : null}
-              {i === 0 || i === points.length - 1 ? (
+              {tickIndexes.has(i) ? (
                 <text x={x(i)} y="208" textAnchor="middle">
-                  {p.time.slice(11, 16)}
+                  {multipleDays ? p.time.slice(5, 10) : p.time.slice(11, 16)}
                 </text>
               ) : null}
             </g>

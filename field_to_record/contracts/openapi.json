@@ -602,6 +602,23 @@
       },
       "ClinicalEvent": {
         "properties": {
+          "soap_section": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "S",
+                  "O",
+                  "A",
+                  "P"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soap Section"
+          },
           "event_id": {
             "type": "string",
             "title": "Event Id"
@@ -1020,6 +1037,15 @@
       },
       "SaveRecordRequest": {
         "properties": {
+          "document_format": {
+            "type": "string",
+            "enum": [
+              "timeline",
+              "soap"
+            ],
+            "title": "Document Format",
+            "default": "timeline"
+          },
           "patient_id": {
             "anyOf": [
               {

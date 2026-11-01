@@ -17,7 +17,7 @@ import {
   type PatientRecord,
 } from "./Workspace";
 import type { PatientCreate } from "./generated";
-import EventCard from "./EventCard";
+import SoapReview, { soapSection } from "./SoapReview";
 import { api } from "./api";
 import { LiveAudio } from "./live";
 import { reducer, initial, sample, type Event, type Extraction } from "./state";
@@ -39,7 +39,22 @@ type History = {
 };
 
 export default function App() {
-  const [page, setPage] = useState("capture");
+  const [page, setPage] = useState(() =>
+    new URLSearchParams(window.location.search).get("view") === "dashboard"
+      ? "dashboard"
+      : "capture",
+  );
+  const requestedPatient = useRef(
+    new URLSearchParams(window.location.search).get("patient"),
+  );
+  const requestedRecord = useRef(
+    new URLSearchParams(window.location.search).get("record"),
+  );
+  useEffect(() => {
+    const id = requestedRecord.current;
+    requestedRecord.current = null;
+    if (id) void openRecord(id);
+  }, []);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [patient, setPatient] = useState<PatientProfile | null>(null);
   const [patientRecords, setPatientRecords] = useState<PatientRecord[]>([]);
@@ -104,7 +119,16 @@ export default function App() {
   useEffect(() => {
     const controller = new AbortController();
     api<PatientProfile[]>("/api/patients", { signal: controller.signal })
-      .then(setPatients)
+      .then((profiles) => {
+        setPatients(profiles);
+        if (requestedPatient.current) {
+          const match = profiles.find(
+            (p) => p.patient_id === requestedPatient.current,
+          );
+          if (match) setPatient(match);
+          requestedPatient.current = null;
+        }
+      })
       .catch((e) => {
         if (!controller.signal.aborted) setNotice(e.message);
       });
@@ -266,6 +290,7 @@ export default function App() {
   }, []);
   function addEvent() {
     const event: Event = {
+      soap_section: null,
       event_id: crypto.randomUUID(),
       event_type: "unclassified",
       description: "Manual event",
@@ -292,6 +317,7 @@ export default function App() {
     setBusy(true);
     try {
       const body: SaveRecordRequest = {
+        document_format: "soap",
         patient_id: patient.patient_id,
         case_id: caseId,
         responder_id: responder,
@@ -446,6 +472,7 @@ export default function App() {
     !!state.events.length &&
     state.events.every(
       (e) =>
+        !!soapSection(e) &&
         e.review_status !== "needs_human_confirmation" &&
         e.flags.every((f) => e.accepted_flags.includes(f)),
     );
@@ -460,6 +487,7 @@ export default function App() {
         .filter(
           ({ event }) =>
             filter === "all" ||
+            filter === `soap:${soapSection(event) || "unassigned"}` ||
             filter === event.event_type ||
             filter === event.observation?.type ||
             (filter === "needs_review" &&
@@ -468,6 +496,11 @@ export default function App() {
     [state.events, filter],
   );
   function acceptAll() {
+    if (state.events.some((event) => !soapSection(event))) {
+      setBulkOpen(false);
+      setNotice("Choose a SOAP section for unassigned entries.");
+      return;
+    }
     const flagged = state.events.some((e) =>
       e.flags.some((f) => !e.accepted_flags.includes(f)),
     );
@@ -490,7 +523,7 @@ export default function App() {
   }
   const pageTitle: Record<string, string> = {
     capture: "Capture note",
-    review: "Review events",
+    review: "SOAP review",
     dashboard: "Patient overview",
     patients: "Patients",
     records: "Record library",
@@ -992,7 +1025,7 @@ export default function App() {
               <div className="page-intro">
                 <div>
                   <span className="eyebrow">REVIEW & CONFIRM</span>
-                  <h1>Review</h1>
+                  <h1>SOAP review</h1>
                   <p>
                     Inspect the original words, resolve uncertainty and accept
                     the extracted events.
@@ -1090,6 +1123,11 @@ export default function App() {
                         <option value="all">
                           All events ({state.events.length})
                         </option>
+                        <option value="soap:S">S · Subjective</option>
+                        <option value="soap:O">O · Objective</option>
+                        <option value="soap:A">A · Assessment</option>
+                        <option value="soap:P">P · Plan</option>
+                        <option value="soap:unassigned">Unassigned</option>
                         <option value="medication_administration">
                           Medications
                         </option>
@@ -1108,25 +1146,13 @@ export default function App() {
                       Showing {visibleEvents.length} of {state.events.length}
                     </span>
                   </div>
-                  {visibleEvents.map(({ event, index }) => (
-                    <EventCard
-                      key={event.event_id}
-                      event={event}
-                      index={index}
-                      update={update}
-                      remove={remove}
-                      select={select}
-                    />
-                  ))}
-                  {!visibleEvents.length ? (
-                    <div className="panel empty-state">
-                      <Icon name="records" />
-                      <h3>No matching events</h3>
-                      <p>
-                        Choose another category to see the rest of this note.
-                      </p>
-                    </div>
-                  ) : null}
+                  <SoapReview
+                    events={state.events}
+                    visible={visibleEvents}
+                    update={update}
+                    remove={remove}
+                    select={select}
+                  />
                   <button className="add-event" onClick={addEvent}>
                     <Icon name="plus" size={16} />
                     Add a missed event
@@ -1174,7 +1200,7 @@ export default function App() {
                         <span className="badge reported">Saved locally</span>
                       </div>
                       <div className="export-links">
-                        {["json", "fhir", "pdf", "html", "text"].map(
+                        {["json", "soap", "fhir", "pdf", "html", "text"].map(
                           (format) => (
                             <a
                               key={format}

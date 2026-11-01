@@ -4,6 +4,7 @@ import re
 from fastapi import HTTPException
 from .extraction import required_flags
 from .schemas import Evidence
+from .soap import classify_event
 
 
 def prepare_review(req, original):
@@ -40,6 +41,7 @@ def prepare_review(req, original):
                 "event_time",
                 "description",
                 "observation",
+                "soap_section",
             ]:
                 value = getattr(event, key)
                 if hasattr(value, "model_dump"):
@@ -88,6 +90,9 @@ def prepare_review(req, original):
             "needs_review": "unclear",
         }[event.status]
         event.flags = list(dict.fromkeys(event.flags + required_flags(event)))
+        event.soap_section = classify_event(event.model_dump())
+        if req.record_status == "reviewed" and req.document_format == "soap" and not event.soap_section:
+            raise HTTPException(422, "Choose a SOAP section for every event before confirming.")
         if req.record_status == "reviewed":
             unresolved = set(event.flags) - set(event.accepted_flags)
             if unresolved or not explicitly_reviewed:

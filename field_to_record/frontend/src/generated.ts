@@ -44,6 +44,7 @@ export type Evidence = {
 };
 
 export type ClinicalEvent = {
+  "soap_section"?: "S" | "O" | "A" | "P" | null;
   "event_id": string;
   "event_type": "medication_administration" | "procedure" | "observation" | "unclassified";
   "description": string;
@@ -65,6 +66,7 @@ export type ClinicalEvent = {
 };
 
 export type SaveRecordRequest = {
+  "document_format"?: "timeline" | "soap";
   "patient_id"?: string | null;
   "case_id": string;
   "responder_id": string;
@@ -79,6 +81,7 @@ export type SaveRecordRequest = {
 };
 
 export type Record = {
+  "document_format"?: "timeline" | "soap";
   "patient"?: Patient | null;
   "case_id": string;
   "responder_id": string;
