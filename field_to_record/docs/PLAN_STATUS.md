@@ -14,6 +14,7 @@
 | Audit | Immutable extraction and revision tables, parent revisions, hash chain, original-extraction hash and verification endpoint; tamper tests |
 | Storage | SQLite WAL; optional pooled PostgreSQL with serialized audit commits; optional payload encryption |
 | Review UI | TypeScript, evidence selection, editable events, explicit flag acceptance, add/remove, history and revision exports |
+| Patient dashboard | Capture-first layout, persisted name/age/gender registry, patient-linked record snapshots, observation/category/date filters, real-value charts and accessible tables, explicit bulk review confirmation |
 | PWA | Precached shell; local services still required for processing |
 | Evaluation | Field precision/recall/F1, exact match, missing-field fabrication, source traceability, local HTTP load and synthetic ASR reports |
 | Offline verification | Typed save/export/audit and real speech transcription with outbound sockets forbidden; actual Wi-Fi-off clean-device rehearsal still needed |

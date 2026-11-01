@@ -1,6 +1,86 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "PatientCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "age": {
+          "maximum": 130,
+          "minimum": 0,
+          "title": "Age",
+          "type": "integer"
+        },
+        "gender": {
+          "enum": [
+            "female",
+            "male",
+            "nonbinary",
+            "other",
+            "not_specified"
+          ],
+          "title": "Gender",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "age",
+        "gender"
+      ],
+      "title": "PatientCreate",
+      "type": "object"
+    },
+    "Patient": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "age": {
+          "maximum": 130,
+          "minimum": 0,
+          "title": "Age",
+          "type": "integer"
+        },
+        "gender": {
+          "enum": [
+            "female",
+            "male",
+            "nonbinary",
+            "other",
+            "not_specified"
+          ],
+          "title": "Gender",
+          "type": "string"
+        },
+        "patient_id": {
+          "title": "Patient Id",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "age",
+        "gender",
+        "patient_id",
+        "created_at"
+      ],
+      "title": "Patient",
+      "type": "object"
+    },
     "Word": {
       "additionalProperties": false,
       "properties": {
@@ -375,6 +455,19 @@
     "SaveRecordRequest": {
       "additionalProperties": false,
       "properties": {
+        "patient_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Patient Id"
+        },
         "case_id": {
           "maxLength": 100,
           "minLength": 1,
@@ -478,6 +571,17 @@
     "Record": {
       "additionalProperties": false,
       "properties": {
+        "patient": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Patient"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "case_id": {
           "title": "Case Id",
           "type": "string"

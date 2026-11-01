@@ -66,7 +66,7 @@ $env:OFFLINE_BUILD = '1'
 
 Base images must already be available (`python:3.11-slim`, `node:22-bookworm-slim`, and `nginxinc/nginx-unprivileged:stable-alpine`). These caches and model weights are ignored by Git and must be provisioned on each build machine. Leave several GB of host disk space available: a full Windows drive can cause SQLite failures, truncated browser traces and Docker log I/O errors even while containers show as running.
 
-During verification the host drive filled, and Docker continued returning filesystem I/O errors after space was freed. Restarting Docker Desktop restored healthy services; this interrupts all running Docker workloads, so coordinate the restart first. The app's records volume survived. The backend suite passed 111 tests, the separate PostgreSQL integration check passed against PostgreSQL 16, and all four native browser tests passed after correcting the microphone fixture test to wait for the complete spoken phrase. CI targets PostgreSQL 17.
+During verification the host drive filled, and Docker continued returning filesystem I/O errors after space was freed. Restarting Docker Desktop restored healthy services; this interrupts all running Docker workloads, so coordinate the restart first. The app's records volume survived. The current backend suite passes 114 tests, including patient isolation and PostgreSQL 16 integration. All five browser scenarios cover patient registration, filtered bulk review, revisions/exports, data-driven charts, mobile themes, uploaded audio and real microphone streaming. The microphone integration test waits for an entire fixture’s worth of transmitted PCM rather than relying on probabilistic partial wording. CI targets PostgreSQL 17.
 
 For a prebuilt offline demo, save the images while the build machine has sufficient disk space, then copy the archive to the demo machine:
 
@@ -77,6 +77,12 @@ docker compose up --no-build --pull never -d
 ```
 
 ## What the product does
+
+The interface opens directly in **Capture note**, with an empty voice/text workspace. Speak the full paragraph, then use **Stop & extract** to review categorized events. Use **New patient** to register a synthetic name, age and gender, or select an existing patient. You may capture before selecting a patient, but the UI requires a patient before saving. Switching patients clears the current workspace after confirmation; saved notes stay in that patient's history. Patient profiles and record links are persisted in the same local storage service, and saved revisions retain the patient snapshot. Existing unassigned records remain readable in the record library.
+
+**Review events** provides medication, procedure, observation, blood-pressure, heart-rate and other vital filters. **Accept all events** opens a confirmation covering the entire note, including hidden categories. When unresolved flags exist, it lists them and requires explicit acknowledgment before bulk acceptance. Editing an accepted field resets that event's review. **Confirm & save** remains a separate final action enforced by backend review validation.
+
+**Patient overview** shows that patient's latest 100 saved notes, event counts, category breakdown and observation charts. Blood pressure uses separate systolic/diastolic lines; other metrics use their own units. Filters select the observation and encounter date. Points use actual reported times, with accessible reading tables and tooltips; single readings show a point rather than an invented trend. Draft readings are labeled. Unsupported units, ambiguous or missing times, negated actions and missing values are omitted from plots. Charts describe documentation, not clinical status. The directory lists the latest 1,000 profiles; duplicate names remain distinct IDs. The interface defaults to the selected charcoal dashboard style: a near-black canvas, neutral cards, compact sidebar, monochrome area/line charts, grouped event-volume bars and a data-driven review-progress flow. Light mode remains available. Grouped bars cover the latest seven encounter dates; the progress flow counts documented, accepted, and reviewed/saved events. The layout supports compact event editors, keyboard navigation and narrow screens. No chart library, remote font or external analytics request is required.
 
 - Live mono PCM audio through an AudioWorklet and WebSocket; provisional text and event candidates appear during speech.
 - Warm local faster-whisper inference with bounded concurrency and buffering. Default: tiny.en int8 on CPU, 600 ms provisional interval, 700 ms silence endpoint.
@@ -136,10 +142,12 @@ The chain is tamper-evident against partial changes. A privileged database owner
 ## API
 
 - `GET /healthz`, `/readyz`, `/health`
+- `GET /api/patients`, `POST /api/patients` with `name`, integer `age` (0–130) and `gender`
+- `GET /api/patients/{patient_id}/records` returns up to 100 latest record summaries with events for that patient
 - `POST /api/extract` persists the original extraction and returns `extraction_id`
 - `POST /v1/extract` is stateless NLU for evaluation/worker use
 - `POST /api/transcribe`, `WS /api/live`, `GET /api/speech/status`
-- `POST /api/records`, `PUT /api/records/{id}` with `expected_version`
+- `POST /api/records`, `PUT /api/records/{id}` with `expected_version`; optional `patient_id` for backwards-compatible API use; existing records cannot be reassigned
 - `GET /api/records?q=...`, `GET /api/records/{id}?version=...`
 - `GET /api/records/{id}/original`
 - `GET /api/records/{id}/json|fhir|pdf|html|text?version=...`

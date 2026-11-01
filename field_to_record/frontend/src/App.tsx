@@ -5,7 +5,17 @@ import {
   useRef,
   useState,
   startTransition,
+  useMemo,
 } from "react";
+import {
+  Icon,
+  PatientDirectory,
+  PatientDashboard,
+  metrics,
+  type PatientProfile,
+  type PatientRecord,
+} from "./Workspace";
+import type { PatientCreate } from "./generated";
 import EventCard from "./EventCard";
 import { api } from "./api";
 import { LiveAudio } from "./live";
@@ -24,9 +34,20 @@ type History = {
   case_id: string;
   record_status: string;
   event_count: number;
+  patient?: PatientProfile | null;
 };
 
 export default function App() {
+  const [page, setPage] = useState("capture");
+  const [patients, setPatients] = useState<PatientProfile[]>([]);
+  const [patient, setPatient] = useState<PatientProfile | null>(null);
+  const [patientRecords, setPatientRecords] = useState<PatientRecord[]>([]);
+  const [filter, setFilter] = useState("all");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkAcknowledged, setBulkAcknowledged] = useState(false);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [page]);
   const [state, dispatch] = useReducer(reducer, initial);
   const [caseId, setCaseId] = useState("DEMO-001"),
     [responder, setResponder] = useState("DEMO-RESPONDER");
@@ -54,11 +75,12 @@ export default function App() {
     [revisions, setRevisions] = useState<Saved["revisions"]>([]);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("theme");
+      const saved = localStorage.getItem("ftr-charcoal-theme");
       if (saved === "light" || saved === "dark") return saved;
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches)
+        return "dark";
     }
-    return "light";
+    return "dark";
   });
 
   useEffect(() => {
@@ -68,7 +90,7 @@ export default function App() {
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem("theme", theme);
+    localStorage.setItem("ftr-charcoal-theme", theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
@@ -77,6 +99,58 @@ export default function App() {
     eventsRef = useRef(state.events);
   noteRef.current = state.narrative;
   eventsRef.current = state.events;
+  useEffect(() => {
+    const controller = new AbortController();
+    api<PatientProfile[]>("/api/patients", { signal: controller.signal })
+      .then(setPatients)
+      .catch((e) => {
+        if (!controller.signal.aborted) setNotice(e.message);
+      });
+    return () => controller.abort();
+  }, [page]);
+  useEffect(() => {
+    setPatientRecords([]);
+    if (!patient) return;
+    const controller = new AbortController();
+    api<PatientRecord[]>(`/api/patients/${patient.patient_id}/records`, {
+      signal: controller.signal,
+    })
+      .then(setPatientRecords)
+      .catch((e) => {
+        if (!controller.signal.aborted) setNotice(e.message);
+      });
+    return () => controller.abort();
+  }, [patient, state.version]);
+  function choosePatient(next: PatientProfile) {
+    if (busy || live) return;
+    if (
+      patient?.patient_id !== next.patient_id &&
+      (patient || state.recordId) &&
+      state.narrative.trim()
+    ) {
+      if (
+        !window.confirm(
+          "Switch patient and clear the current workspace? Saved notes remain in history.",
+        )
+      )
+        return;
+      dispatch({ type: "narrative", value: "" });
+      setPreview("");
+      setOriginal("");
+      setAudit("");
+    }
+    setPatient(next);
+    setPage("capture");
+    setFilter("all");
+  }
+  async function registerPatient(body: PatientCreate) {
+    const created = await api<PatientProfile>("/api/patients", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    setPatients((previous) => [created, ...previous]);
+    choosePatient(created);
+  }
   useEffect(() => {
     let mounted = true;
     const update = () => setNetwork(navigator.onLine);
@@ -128,6 +202,8 @@ export default function App() {
         }),
       });
       dispatch({ type: "extracted", value: result });
+      setPage("review");
+      setFilter("all");
       setLatency(performance.now() - start);
       setNotice(
         "Extraction complete. Select Source to inspect evidence, resolve flags, and accept each event.",
@@ -219,10 +295,11 @@ export default function App() {
     dispatch({ type: "events", value: [...state.events, event] });
   }
   async function save(reviewed: boolean) {
-    if (!state.extraction) return;
+    if (!state.extraction || !patient) return;
     setBusy(true);
     try {
       const body: SaveRecordRequest = {
+        patient_id: patient.patient_id,
         case_id: caseId,
         responder_id: responder,
         narrative: state.narrative,
@@ -264,6 +341,9 @@ export default function App() {
         "/api/records/" + id + (version ? "?version=" + version : ""),
       );
       const record = r.record;
+      setPatient(record.patient || null);
+      setPage("review");
+      setFilter("all");
       setCaseId(record.case_id);
       setResponder(record.responder_id);
       setEncounterDate(record.encounter_date || "");
@@ -383,315 +463,537 @@ export default function App() {
     (e) => e.review_status !== "needs_human_confirmation",
   ).length;
   const span = state.selected;
+  const visibleEvents = useMemo(
+    () =>
+      state.events
+        .map((event, index) => ({ event, index }))
+        .filter(
+          ({ event }) =>
+            filter === "all" ||
+            filter === event.event_type ||
+            filter === event.observation?.type ||
+            (filter === "needs_review" &&
+              event.review_status === "needs_human_confirmation"),
+        ),
+    [state.events, filter],
+  );
+  function acceptAll() {
+    const flagged = state.events.some((e) =>
+      e.flags.some((f) => !e.accepted_flags.includes(f)),
+    );
+    if (flagged && !bulkAcknowledged) {
+      setBulkOpen(true);
+      return;
+    }
+    const accepted = state.events.map((e) => ({
+      ...e,
+      accepted_flags: [...e.flags],
+      review_status: (e.manual
+        ? "corrected"
+        : "confirmed") as Event["review_status"],
+    }));
+    eventsRef.current = accepted;
+    dispatch({ type: "events", value: accepted });
+    setBulkOpen(false);
+    setBulkAcknowledged(false);
+    setNotice("All events accepted. Check the patient, then confirm and save.");
+  }
+  const pageTitle: Record<string, string> = {
+    capture: "Capture note",
+    review: "Review events",
+    dashboard: "Patient overview",
+    patients: "Patients",
+    records: "Record library",
+  };
   return (
     <div className="app-shell">
       <a className="skip-link" href="#workspace">
         Skip to workspace
       </a>
-      <header className="topbar">
-        <a className="brand" href="/">
-          <div className="brand-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-            </svg>
-          </div>
-          <span>Field to Record</span>
-          <span className="brand-badge">Clinical</span>
+      <aside className="sidebar">
+        <a
+          className="brand"
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            setPage("capture");
+          }}
+        >
+          <span className="brand-icon">
+            <Icon name="pulse" size={23} />
+          </span>
+          <span>
+            Field<span className="brand-light"> / Record</span>
+          </span>
         </a>
-        <div className="top-actions">
-          <div className="status-badge">
-            <span className={`status-dot ${apiReady ? "good" : ""}`} />
-            <span>{apiReady ? "Local API ready" : "Connecting..."}</span>
-          </div>
-          <div className="status-badge">
-            <span className={`status-dot ${network ? "good" : ""}`} />
-            <span>{network ? "Network available" : "Offline"}</span>
-          </div>
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={toggleTheme}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {theme === "dark" ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-              </svg>
-            )}
-          </button>
+        <div className="workspace-label">
+          <span className="workspace-avatar">F</span>
+          <span>
+            Local workspace<small>Synthetic demonstration</small>
+          </span>
+          <span className="connection-dot" />
         </div>
-      </header>
-      <main id="workspace">
-        <div className="stats-row">
-          <div className="stat-card">
-            <span className="stat-label">Typed request</span>
-            <div className="stat-value">
-              {latency === null ? "—" : Math.round(latency)}
-              <span className="stat-unit"> ms</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">Last ASR inference</span>
-            <div className="stat-value">
-              {asrLatency === null ? "—" : Math.round(asrLatency)}
-              <span className="stat-unit"> ms</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">Events accepted</span>
-            <div className="stat-value">
-              {reviewedCount}
-              <span className="stat-unit"> / {state.events.length}</span>
-            </div>
-          </div>
-        </div>
-        <div className="workspace-grid">
-          <section className="capture-column">
-            <div className="panel">
-              <div className="section-heading">
-                <div>
-                  <span className="step">01</span>
-                  <h2>Capture the note</h2>
-                </div>
-                <span className="tag">SYNTHETIC DATA ONLY</span>
-              </div>
-              <fieldset disabled={live || busy}>
-                <div className="form-grid">
-                  <label>
-                    Case ID
-                    <input
-                      value={caseId}
-                      onChange={(e) => setCaseId(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Responder / reviewer
-                    <input
-                      value={responder}
-                      onChange={(e) => setResponder(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Encounter date
-                    <input
-                      type="date"
-                      value={encounterDate}
-                      onChange={(e) => setEncounterDate(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Time zone
-                    <input value={tz} onChange={(e) => setTz(e.target.value)} />
-                  </label>
-                </div>
-              </fieldset>
-              <div className={`recorder ${live ? "listening" : ""}`}>
-                <div>
-                  <span className="recorder-light" />
-                  <strong>
-                    {live ? "Listening on this device" : "Live local dictation"}
-                  </strong>
-                  <p>
-                    {live
-                      ? "Words and events appear as you speak"
-                      : speechReady
-                        ? "Speech engine warmed and ready"
-                        : "Speech warms on first connection"}
-                  </p>
-                </div>
-                <button
-                  disabled={busy}
-                  className={live ? "record-stop" : ""}
-                  onClick={() =>
-                    live ? void speech.current?.stop() : void startLive()
-                  }
-                >
-                  {live ? "Stop & extract" : "Start speaking"}
-                </button>
-              </div>
-              <label htmlFor="narrative">
-                On-scene narrative
-                <textarea
-                  id="narrative"
-                  aria-label="On-scene narrative"
-                  rows={7}
-                  disabled={live || busy}
-                  value={state.narrative}
-                  onChange={(e) => changeNarrative(e.target.value)}
-                  placeholder="Type a synthetic note, or start speaking…"
-                />
-              </label>
-              {live ? (
-                <div className="live-preview" aria-live="polite">
-                  <span>PROVISIONAL · MAY CHANGE</span>
-                  <p>{partial || "Waiting for the next phrase…"}</p>
-                  {liveEvents.length ? (
-                    <div className="live-chips">
-                      {liveEvents.map((e, i) => (
-                        <span key={i}>
-                          {e.medication || e.description}
-                          {e.dose?.value != null
-                            ? ` · ${e.dose.value} ${e.dose.unit}`
-                            : ""}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
+        <span className="nav-heading">WORKSPACE</span>
+        <nav aria-label="Main navigation">
+          {[
+            ["capture", "Capture note"],
+            ["dashboard", "Patient overview"],
+            ["patients", "Patients"],
+            ["records", "Record library"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              aria-label={label}
+              disabled={busy || live}
+              aria-current={page === key ? "page" : undefined}
+              onClick={() => {
+                setPage(key);
+                if (key === "records") void loadHistory();
+              }}
+            >
+              <Icon name={key} />
+              <span>{label}</span>
+              {key === "patients" ? (
+                <span className="nav-count">{patients.length}</span>
               ) : null}
-              <div className="capture-actions">
-                <button
-                  className="link"
-                  disabled={live || busy}
-                  onClick={() => changeNarrative(sample)}
-                >
-                  Load example
-                </button>
-                <button
-                  className="link"
-                  disabled={live || busy}
-                  onClick={() => changeNarrative("")}
-                >
-                  Clear note
-                </button>
-                <label className="upload">
-                  Upload audio
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    disabled={live || busy}
-                    onChange={(e) => {
-                      void transcribe(e.target.files?.[0]);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-                <button
-                  disabled={live || busy || !state.narrative.trim()}
-                  onClick={() => void extract()}
-                >
-                  {busy ? "Working…" : "Extract events"}
-                </button>
-              </div>
-              <p className="help">
-                No cloud speech service. Names, numbers, units and times require
-                review.
-              </p>
-            </div>
-            <div className="panel transcript-panel" id="evidence-transcript">
-              <div className="section-heading">
-                <div>
-                  <span className="step">02</span>
-                  <h2>Inspect the evidence</h2>
-                </div>
-              </div>
-              <p className="help">
-                Select Source on any extracted field to highlight its original
-                words.
-              </p>
-              <div className="transcript">
-                {span ? (
+            </button>
+          ))}
+          {state.extraction ? (
+            <button
+              aria-current={page === "review" ? "page" : undefined}
+              disabled={busy || live}
+              onClick={() => setPage("review")}
+            >
+              <Icon name="check" />
+              Review events
+              <span className="nav-count">{state.events.length}</span>
+            </button>
+          ) : null}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="local-card">
+            <Icon name="shield" />
+            <strong>Built to work offline.</strong>
+            <p>Your words stay with your local processing service.</p>
+            <span className="local-pill">LOCAL PROCESSING</span>
+          </div>
+          <button className="theme-toggle" onClick={toggleTheme}>
+            <Icon name="moon" />
+            {theme === "light" ? "Switch to dark" : "Switch to light"}
+          </button>
+          <div className="sidebar-footer">
+            <span className="avatar small">FR</span>
+            <span>
+              Responder workspace<small>Hackathon prototype</small>
+            </span>
+          </div>
+        </div>
+      </aside>
+      <div className="main-shell">
+        <header className="topbar">
+          <div className="breadcrumb">
+            <span>Workspace</span>
+            <span>/</span>
+            <strong>{pageTitle[page]}</strong>
+          </div>
+          <div className="service-status">
+            <span className={`status-dot ${apiReady ? "online" : ""}`} />
+            {apiReady ? "Local API ready" : "Connecting to API"}
+            <span className="top-divider" />
+            <Icon name="shield" size={16} />
+            <span>{network ? "Device workspace" : "Offline workspace"}</span>
+          </div>
+        </header>
+        <main id="workspace">
+          <div className="patient-context">
+            <div>
+              <Icon name="patients" />
+              <span>
+                {patient ? (
                   <>
-                    {Array.from(state.narrative).slice(0, span[0]).join("")}
-                    <mark>
-                      {Array.from(state.narrative)
-                        .slice(span[0], span[1])
-                        .join("")}
-                    </mark>
-                    {Array.from(state.narrative).slice(span[1]).join("")}
+                    <strong>{patient.name}</strong>
+                    <small>
+                      {patient.age} years ·{" "}
+                      {patient.gender.replaceAll("_", " ")} · ID{" "}
+                      {patient.patient_id.slice(0, 8)}
+                    </small>
                   </>
                 ) : (
-                  state.narrative || "Your source transcript will appear here."
+                  <>
+                    <strong>No patient selected</strong>
+                    <small>
+                      Capture first, then assign a patient before saving
+                    </small>
+                  </>
                 )}
-              </div>
+              </span>
             </div>
-            <div className="panel history-panel">
-              <div className="section-heading">
-                <div>
-                  <span className="step">04</span>
-                  <h2>Local records</h2>
-                </div>
-                <button className="link" onClick={() => void loadHistory()}>
-                  Refresh
-                </button>
-              </div>
-              <div className="search">
-                <input
-                  aria-label="Search local records"
-                  placeholder="Case, responder, or record ID"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-                <button
-                  className="secondary"
-                  onClick={() => void loadHistory()}
-                >
-                  Search
-                </button>
-              </div>
-              {history.map((r) => (
-                <button
-                  className="history-row"
-                  key={r.record_id}
-                  disabled={busy || live}
-                  onClick={() => void openRecord(r.record_id)}
-                >
-                  <strong>{r.case_id}</strong>
-                  <span>
-                    {r.event_count} events · revision {r.version} ·{" "}
-                    {r.record_status.replace("_", " ")}
-                  </span>
-                </button>
-              ))}
+            <div>
+              <select
+                aria-label="Active patient"
+                value={patient?.patient_id || ""}
+                disabled={busy || live}
+                onChange={(e) => {
+                  const next = patients.find(
+                    (p) => p.patient_id === e.target.value,
+                  );
+                  if (next) choosePatient(next);
+                }}
+              >
+                <option value="">Select patient</option>
+                {patients.map((p) => (
+                  <option key={p.patient_id} value={p.patient_id}>
+                    {p.name} · {p.age} · {p.patient_id.slice(0, 6)}
+                  </option>
+                ))}
+              </select>
+              <button
+                disabled={busy || live}
+                onClick={() => setPage("patients")}
+              >
+                <Icon name="plus" size={16} />
+                New patient
+              </button>
             </div>
-          </section>
-          <section className="review-column">
-            <div className="panel review-panel">
-              <div className="section-heading">
+          </div>
+          {page === "capture" ? (
+            <>
+              <div className="capture-intro">
                 <div>
-                  <span className="step">03</span>
-                  <h2>Review & confirm</h2>
-                </div>
-                <span className="count">{state.events.length} events</span>
-              </div>
-              {!state.extraction ? (
-                <div className="empty-state">
-                  <svg
-                    width="52"
-                    height="52"
-                    viewBox="0 0 48 48"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <rect
-                      x="10"
-                      y="5"
-                      width="28"
-                      height="38"
-                      rx="5"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                    <path
-                      d="M17 16h14M17 24h14M17 32h8"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                  <h3>A clear record starts here</h3>
+                  <h1>Capture note</h1>
                   <p>
-                    Capture a note to see medications, procedures and
-                    observations with their evidence.
+                    Speak an on-scene note. Review every detail before it
+                    becomes a record.
                   </p>
                 </div>
-              ) : (
-                <>
+                <span className="reference-tag">
+                  <Icon name="mic" size={14} /> Local dictation
+                </span>
+              </div>
+              <div className="capture-grid">
+                <div className="capture-main">
+                  <section
+                    className={`capture-studio panel ${live ? "is-listening" : ""}`}
+                    aria-label="Capture note"
+                  >
+                    <div className="studio-top">
+                      <span className="live-indicator">
+                        <span
+                          className={`status-dot ${speechReady ? "online" : ""}`}
+                        />
+                        {live
+                          ? "Listening locally"
+                          : speechReady
+                            ? "Speech engine ready"
+                            : "Speech warms on first connection"}
+                      </span>
+                      <span className="shortcut-label">VOICE OR TEXT</span>
+                    </div>
+                    <div className="mic-area">
+                      <button
+                        className={`mic-button ${live ? "record-stop" : ""}`}
+                        aria-label={
+                          live ? "Stop microphone" : "Start microphone"
+                        }
+                        disabled={busy}
+                        onClick={() =>
+                          live ? void speech.current?.stop() : void startLive()
+                        }
+                      >
+                        <Icon name="mic" size={34} />
+                      </button>
+                      <h2>
+                        {live
+                          ? "Listening to your note…"
+                          : "Start with your voice"}
+                      </h2>
+                      <p>
+                        {live
+                          ? "Pause briefly between events. Stop when your paragraph is complete."
+                          : "One paragraph. Every important detail."}
+                      </p>
+                      {live ? (
+                        <button
+                          className="primary"
+                          onClick={() => void speech.current?.stop()}
+                        >
+                          Stop & extract
+                        </button>
+                      ) : (
+                        <button
+                          className="link"
+                          disabled={busy}
+                          onClick={() => void startLive()}
+                        >
+                          Start speaking <Icon name="arrow" size={16} />
+                        </button>
+                      )}
+                    </div>
+                    {live ? (
+                      <div className="live-preview" aria-live="polite">
+                        <div className="waveform">
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <i
+                              key={i}
+                              style={{ animationDelay: `${i * 0.06}s` }}
+                            />
+                          ))}
+                        </div>
+                        <span className="eyebrow">
+                          PROVISIONAL · MAY CHANGE
+                        </span>
+                        <p>{partial || "Waiting for the next phrase…"}</p>
+                        {liveEvents.length ? (
+                          <div className="live-chips">
+                            {liveEvents.map((e, i) => (
+                              <span key={i}>
+                                {e.medication || e.description}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <div className="narrative-input">
+                      <div>
+                        <label htmlFor="narrative">Your on-scene note</label>
+                        <span>
+                          {state.narrative.length.toLocaleString()} / 20,000
+                        </span>
+                      </div>
+                      <textarea
+                        id="narrative"
+                        aria-label="On-scene narrative"
+                        maxLength={20000}
+                        rows={6}
+                        disabled={live || busy}
+                        value={state.narrative}
+                        onChange={(e) => changeNarrative(e.target.value)}
+                        placeholder="Or type here. For example: At 14:05, recorded blood pressure 120/80…"
+                      />
+                    </div>
+                    <div className="capture-actions">
+                      <div>
+                        <label className="upload-button">
+                          <Icon name="capture" size={16} />
+                          Upload audio
+                          <input
+                            type="file"
+                            accept="audio/*"
+                            disabled={busy || live}
+                            onChange={(e) => {
+                              void transcribe(e.target.files?.[0]);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                        <button
+                          className="link"
+                          disabled={busy || live}
+                          onClick={() => changeNarrative(sample)}
+                        >
+                          Load example
+                        </button>
+                        <button
+                          className="link"
+                          disabled={busy || live}
+                          onClick={() => changeNarrative("")}
+                        >
+                          Clear note
+                        </button>
+                      </div>
+                      <button
+                        className="primary"
+                        disabled={busy || live || !state.narrative.trim()}
+                        onClick={() => void extract()}
+                      >
+                        {busy ? "Processing…" : "Extract events"}
+                        <Icon name="arrow" size={16} />
+                      </button>
+                    </div>
+                  </section>
+                  <div className="capture-promises">
+                    <span>
+                      <Icon name="shield" size={17} />
+                      Local speech processing
+                    </span>
+                    <span>
+                      <Icon name="check" size={17} />
+                      Evidence-linked events
+                    </span>
+                    <span>
+                      <Icon name="records" size={17} />
+                      Review before saving
+                    </span>
+                  </div>
+                  <details className="encounter-details panel">
+                    <summary>
+                      Encounter details{" "}
+                      <span>Case, responder, date & time zone</span>
+                    </summary>
+                    <div className="form-grid four">
+                      <label>
+                        Case ID
+                        <input
+                          value={caseId}
+                          onChange={(e) => setCaseId(e.target.value)}
+                          disabled={busy || live}
+                        />
+                      </label>
+                      <label>
+                        Responder / reviewer
+                        <input
+                          value={responder}
+                          onChange={(e) => setResponder(e.target.value)}
+                          disabled={busy || live}
+                        />
+                      </label>
+                      <label>
+                        Encounter date
+                        <input
+                          type="date"
+                          value={encounterDate}
+                          onChange={(e) => setEncounterDate(e.target.value)}
+                          disabled={busy || live}
+                        />
+                      </label>
+                      <label>
+                        Time zone
+                        <input
+                          value={tz}
+                          onChange={(e) => setTz(e.target.value)}
+                          disabled={busy || live}
+                        />
+                      </label>
+                    </div>
+                  </details>
+                </div>
+                <aside className="capture-rail panel">
+                  <div className="rail-title">
+                    <h2>Patient workspace</h2>
+                    <Icon name="patients" size={16} />
+                  </div>
+                  <div className="rail-patient">
+                    <span className="avatar">
+                      {patient ? patient.name.slice(0, 2).toUpperCase() : "—"}
+                    </span>
+                    <strong>{patient?.name || "No patient selected"}</strong>
+                    <p>
+                      {patient
+                        ? `${patient.age} years · ${patient.gender.replaceAll("_", " ")}`
+                        : "Select or register a patient before saving."}
+                    </p>
+                  </div>
+                  <div className="rail-date">
+                    <Icon name="clock" size={15} />
+                    {encounterDate}
+                  </div>
+                  <div className="rail-numbers">
+                    <div>
+                      <span>Saved notes</span>
+                      <strong>{patientRecords.length}</strong>
+                    </div>
+                    <div>
+                      <span>Current events</span>
+                      <strong>{state.events.length}</strong>
+                    </div>
+                  </div>
+                  <h3>Recent captures</h3>
+                  {patientRecords.length ? (
+                    patientRecords.slice(0, 4).map((r) => (
+                      <button
+                        className="rail-record"
+                        key={r.record_id}
+                        onClick={() => void openRecord(r.record_id)}
+                        disabled={busy || live}
+                      >
+                        <span>
+                          {r.encounter_date || r.created_at.slice(0, 10)}
+                          <small>
+                            {r.events.length} events ·{" "}
+                            {r.record_status.replaceAll("_", " ")}
+                          </small>
+                        </span>
+                        <Icon name="arrow" size={14} />
+                      </button>
+                    ))
+                  ) : (
+                    <div className="rail-empty">
+                      <Icon name="records" size={22} />
+                      <p>Your patient’s saved notes will appear here.</p>
+                    </div>
+                  )}
+                  <div className="rail-note">
+                    <Icon name="shield" size={15} />
+                    <span>Local processing. Review required.</span>
+                  </div>
+                </aside>
+              </div>
+            </>
+          ) : null}
+          {page === "patients" ? (
+            <>
+              <div className="page-intro">
+                <div>
+                  <span className="eyebrow">PATIENT WORKSPACE</span>
+                  <h1>Keep every story together.</h1>
+                  <p>
+                    Register a patient, select their profile and start a new
+                    note.
+                  </p>
+                </div>
+              </div>
+              <PatientDirectory
+                patients={patients}
+                selected={patient}
+                onSelect={choosePatient}
+                onCreate={registerPatient}
+                busy={busy || live}
+              />
+            </>
+          ) : null}
+          {page === "dashboard" ? (
+            <PatientDashboard
+              key={patient?.patient_id || "none"}
+              patient={patient}
+              records={patientRecords}
+              draft={patient && !state.recordId ? state.events : []}
+              draftDate={encounterDate}
+              onCapture={() => {
+                if (state.recordId) {
+                  dispatch({ type: "narrative", value: "" });
+                  setRevisions([]);
+                  setPreview("");
+                  setOriginal("");
+                  setAudit("");
+                }
+                setPage("capture");
+              }}
+              onOpen={(id) => void openRecord(id)}
+            />
+          ) : null}
+          {page === "review" ? (
+            <>
+              <div className="page-intro">
+                <div>
+                  <span className="eyebrow">REVIEW & CONFIRM</span>
+                  <h1>A record you can trace.</h1>
+                  <p>
+                    Inspect the original words, resolve uncertainty and accept
+                    the extracted events.
+                  </p>
+                </div>
+                <button onClick={() => setPage("capture")}>
+                  <Icon name="capture" size={16} />
+                  Back to capture
+                </button>
+              </div>
+              <div className="review-toolbar panel">
+                <div>
+                  <strong>
+                    {reviewedCount} / {state.events.length}
+                  </strong>
+                  <span> events accepted</span>
                   <div className="review-progress">
                     <span
                       style={{
@@ -699,7 +1001,99 @@ export default function App() {
                       }}
                     />
                   </div>
-                  {state.events.map((event, index) => (
+                </div>
+                <button
+                  className="primary"
+                  disabled={!state.events.length || allReviewed || busy}
+                  onClick={() => {
+                    setBulkAcknowledged(false);
+                    setBulkOpen(true);
+                  }}
+                >
+                  <Icon name="check" size={17} />
+                  Accept all events
+                </button>
+              </div>
+              <div className="review-layout">
+                <aside className="evidence-column">
+                  <section className="panel" id="evidence-transcript">
+                    <span className="eyebrow">SOURCE EVIDENCE</span>
+                    <h2>The original words</h2>
+                    <p className="help">
+                      Choose Source on any field to highlight its evidence.
+                    </p>
+                    <div className="transcript">
+                      {span ? (
+                        <>
+                          {Array.from(state.narrative)
+                            .slice(0, span[0])
+                            .join("")}
+                          <mark>
+                            {Array.from(state.narrative)
+                              .slice(...span)
+                              .join("")}
+                          </mark>
+                          {Array.from(state.narrative).slice(span[1]).join("")}
+                        </>
+                      ) : (
+                        state.narrative
+                      )}
+                    </div>
+                    <div className="source-meta">
+                      <Icon name="clock" size={15} />
+                      {encounterDate} · {tz}
+                    </div>
+                  </section>
+                  <section className="panel">
+                    <span className="eyebrow">PROCESSING</span>
+                    <h2>Local & traceable</h2>
+                    <div className="metric-row">
+                      <span>Typed request</span>
+                      <strong>
+                        {latency == null ? "—" : Math.round(latency) + " ms"}
+                      </strong>
+                    </div>
+                    <div className="metric-row">
+                      <span>Last speech inference</span>
+                      <strong>
+                        {asrLatency == null
+                          ? "—"
+                          : Math.round(asrLatency) + " ms"}
+                      </strong>
+                    </div>
+                  </section>
+                </aside>
+                <section className="review-column">
+                  <div className="event-filters">
+                    <label>
+                      <span className="sr-only">Filter events</span>
+                      <select
+                        aria-label="Filter events"
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value)}
+                      >
+                        <option value="all">
+                          All events ({state.events.length})
+                        </option>
+                        <option value="medication_administration">
+                          Medications
+                        </option>
+                        <option value="procedure">Procedures</option>
+                        <option value="observation">All observations</option>
+                        {Object.entries(metrics).map(([key, m]) => (
+                          <option key={key} value={key}>
+                            {m.label}
+                          </option>
+                        ))}
+                        <option value="unclassified">Other statements</option>
+                        <option value="needs_review">Awaiting review</option>
+                      </select>
+                    </label>
+                    <span className="help">
+                      Showing {visibleEvents.length} of {state.events.length}
+                    </span>
+                  </div>
+                  {visibleEvents.map(({ event, index }) => (
                     <EventCard
                       key={event.event_id}
                       event={event}
@@ -709,150 +1103,341 @@ export default function App() {
                       select={select}
                     />
                   ))}
-                  <button
-                    className="secondary full-width"
-                    onClick={addEvent}
-                    disabled={busy || live}
-                  >
-                    + Add a missed event
+                  {!visibleEvents.length ? (
+                    <div className="panel empty-state">
+                      <Icon name="records" />
+                      <h3>No matching events</h3>
+                      <p>
+                        Choose another category to see the rest of this note.
+                      </p>
+                    </div>
+                  ) : null}
+                  <button className="add-event" onClick={addEvent}>
+                    <Icon name="plus" size={16} />
+                    Add a missed event
                   </button>
-                  <div className="save-bar">
-                    <p>
-                      {allReviewed
-                        ? "Every event is accepted. Ready to confirm."
-                        : "Accept each event and acknowledge its unresolved flags."}
-                    </p>
+                  <div className="save-bar panel">
+                    <div>
+                      <strong>
+                        {allReviewed
+                          ? "Ready for your final check"
+                          : "Review in progress"}
+                      </strong>
+                      <small>
+                        {patient
+                          ? `Saving to ${patient.name}`
+                          : "Select or register a patient before saving"}
+                      </small>
+                    </div>
                     <div>
                       <button
-                        className="secondary"
-                        disabled={busy || live}
+                        disabled={busy || !state.extraction || !patient}
                         onClick={() => void save(false)}
                       >
                         Save draft
                       </button>
                       <button
-                        disabled={
-                          busy || live || !allReviewed || !responder.trim()
-                        }
+                        className="primary"
+                        disabled={busy || !allReviewed || !patient}
                         onClick={() => void save(true)}
                       >
                         Confirm & save
+                        <Icon name="check" size={16} />
                       </button>
                     </div>
                   </div>
-                </>
-              )}
-            </div>
-            {state.recordId ? (
-              <div className="panel exports">
-                <h2>Record & revision history</h2>
-                <p className="mono">
-                  {state.recordId} · revision {state.version}
-                </p>
-                <div className="export-links">
-                  {["json", "fhir", "pdf", "text"].map((format) => (
-                    <a
-                      key={format}
-                      href={`/api/records/${state.recordId}/${format}?version=${state.version}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {format === "fhir" ? "FHIR-lite" : format.toUpperCase()}
-                    </a>
-                  ))}
-                </div>
-                <div className="export-links">
-                  <button
-                    className="link"
-                    onClick={async () => {
-                      try {
-                        setPreview(
-                          await (
-                            await fetch(
-                              `/api/records/${state.recordId}/html?version=${state.version}`,
-                            )
-                          ).text(),
-                        );
-                      } catch (e) {
-                        setNotice((e as Error).message);
-                      }
-                    }}
-                  >
-                    Preview note
-                  </button>
-                  <button
-                    className="link"
-                    onClick={async () => {
-                      try {
-                        const r = await api<{
-                          valid: boolean;
-                          entries_verified: number;
-                        }>("/api/audit/verify");
-                        setAudit(
-                          `${r.valid ? "Verified" : "FAILED"} · ${r.entries_verified} entries checked`,
-                        );
-                      } catch (e) {
-                        setNotice((e as Error).message);
-                      }
-                    }}
-                  >
-                    Verify audit chain
-                  </button>
-                  <button
-                    className="link"
-                    onClick={async () => {
-                      try {
-                        setOriginal(
-                          JSON.stringify(
-                            await api(
-                              `/api/records/${state.recordId}/original`,
-                            ),
-                            null,
-                            2,
+                  {state.recordId ? (
+                    <section className="panel exports">
+                      <div className="panel-heading">
+                        <div>
+                          <span className="eyebrow">SAVED RECORD</span>
+                          <h2>Record & revision history</h2>
+                          <p className="mono">
+                            {state.recordId} · revision {state.version}
+                          </p>
+                        </div>
+                        <span className="badge reported">Saved locally</span>
+                      </div>
+                      <div className="export-links">
+                        {["json", "fhir", "pdf", "html", "text"].map(
+                          (format) => (
+                            <a
+                              key={format}
+                              href={`/api/records/${state.recordId}/${format}?version=${state.version}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              {format === "fhir"
+                                ? "FHIR-lite"
+                                : format.toUpperCase()}
+                              <Icon name="arrow" size={14} />
+                            </a>
                           ),
-                        );
-                      } catch (e) {
-                        setNotice((e as Error).message);
-                      }
-                    }}
-                  >
-                    Original extraction
-                  </button>
-                </div>
-                {audit ? <p role="status">{audit}</p> : null}
-                {preview ? (
-                  <iframe
-                    title="Generated handover note"
-                    sandbox=""
-                    srcDoc={preview}
-                  />
-                ) : null}
-                {original ? (
-                  <details open>
-                    <summary>Original immutable output</summary>
-                    <pre>{original}</pre>
-                  </details>
-                ) : null}
-                <div className="revision-list">
-                  {revisions.map((r) => (
-                    <button
-                      className="link"
-                      key={r.version}
-                      onClick={() => void openRecord(state.recordId, r.version)}
-                    >
-                      Revision {r.version} · {r.actor}
-                    </button>
-                  ))}
+                        )}
+                      </div>
+                      <div className="export-tools">
+                        <button
+                          className="link"
+                          onClick={async () => {
+                            try {
+                              setPreview(
+                                await (
+                                  await fetch(
+                                    `/api/records/${state.recordId}/html?version=${state.version}`,
+                                  )
+                                ).text(),
+                              );
+                            } catch (e) {
+                              setNotice((e as Error).message);
+                            }
+                          }}
+                        >
+                          Preview note
+                        </button>
+                        <button
+                          className="link"
+                          onClick={async () => {
+                            try {
+                              const result = await api<{ valid: boolean }>(
+                                "/api/audit/verify",
+                              );
+                              setAudit(
+                                result.valid
+                                  ? "Verified · audit chain intact"
+                                  : "Audit verification failed",
+                              );
+                            } catch (e) {
+                              setNotice((e as Error).message);
+                            }
+                          }}
+                        >
+                          Verify audit chain
+                        </button>
+                        <button
+                          className="link"
+                          onClick={async () => {
+                            try {
+                              setOriginal(
+                                JSON.stringify(
+                                  await api(
+                                    `/api/records/${state.recordId}/original`,
+                                  ),
+                                  null,
+                                  2,
+                                ),
+                              );
+                            } catch (e) {
+                              setNotice((e as Error).message);
+                            }
+                          }}
+                        >
+                          Original extraction
+                        </button>
+                      </div>
+                      {audit ? <p role="status">{audit}</p> : null}
+                      {preview ? (
+                        <iframe
+                          title="Handover preview"
+                          sandbox=""
+                          srcDoc={preview}
+                        />
+                      ) : null}
+                      {original ? (
+                        <details open>
+                          <summary>Original immutable output</summary>
+                          <pre>{original}</pre>
+                        </details>
+                      ) : null}
+                      <div className="revision-list">
+                        {revisions.map((r) => (
+                          <button
+                            className="link"
+                            key={r.version}
+                            onClick={() =>
+                              void openRecord(state.recordId, r.version)
+                            }
+                          >
+                            Revision {r.version} · {r.actor}
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
+                </section>
+              </div>
+            </>
+          ) : null}
+          {page === "records" ? (
+            <>
+              <div className="page-intro">
+                <div>
+                  <span className="eyebrow">LOCAL RECORD LIBRARY</span>
+                  <h1>Every note. A clear trail.</h1>
+                  <p>
+                    Search patient names, case IDs, responders or record IDs.
+                  </p>
                 </div>
               </div>
+              <section className="panel">
+                <form
+                  className="record-search"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void loadHistory();
+                  }}
+                >
+                  <Icon name="search" />
+                  <input
+                    aria-label="Search records"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Patient, case, responder or record ID"
+                  />
+                  <button className="primary">Search</button>
+                </form>
+                <div className="record-list">
+                  {history.map((r) => (
+                    <button
+                      key={r.record_id}
+                      onClick={() => void openRecord(r.record_id)}
+                    >
+                      <span className="avatar">
+                        <Icon name="records" />
+                      </span>
+                      <span>
+                        <strong>
+                          {r.patient?.name || "Unassigned legacy record"}
+                        </strong>
+                        <small>
+                          {r.case_id} · {r.event_count} events · revision{" "}
+                          {r.version}
+                        </small>
+                      </span>
+                      <span className="badge reported">
+                        {r.record_status.replaceAll("_", " ")}
+                      </span>
+                      <Icon name="arrow" size={17} />
+                    </button>
+                  ))}
+                  {!history.length ? (
+                    <div className="empty-state">
+                      <Icon name="records" size={32} />
+                      <h3>No matching records</h3>
+                      <p>
+                        Saved notes will appear here. Try a different search.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            </>
+          ) : null}
+          <div className="workspace-notice" role="status">
+            <Icon name="shield" size={17} />
+            <span>{notice}</span>
+          </div>
+          <footer>
+            Field / Record · Synthetic-data prototype · Not for clinical use ·
+            No treatment recommendations
+          </footer>
+        </main>
+      </div>
+      {bulkOpen ? (
+        <div className="dialog-backdrop">
+          <section
+            className="bulk-dialog panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-title"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setBulkOpen(false);
+              if (e.key === "Tab") {
+                const elements = e.currentTarget.querySelectorAll<HTMLElement>(
+                  "button:not(:disabled), input",
+                );
+                const first = elements[0],
+                  last = elements[elements.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                  e.preventDefault();
+                  last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                  e.preventDefault();
+                  first.focus();
+                }
+              }
+            }}
+          >
+            <span className="dialog-icon">
+              <Icon name="check" size={28} />
+            </span>
+            <h2 id="bulk-title">Accept all {state.events.length} events?</h2>
+            <p>
+              This applies to the entire note, including events hidden by your
+              current filter. You can still edit any field afterward; edited
+              events need review again.
+            </p>
+            {state.events.some((e) =>
+              e.flags.some((f) => !e.accepted_flags.includes(f)),
+            ) ? (
+              <>
+                <div className="bulk-flags">
+                  {state.events
+                    .filter((e) =>
+                      e.flags.some((f) => !e.accepted_flags.includes(f)),
+                    )
+                    .map((e) => (
+                      <div key={e.event_id}>
+                        <strong>{e.medication || e.description}</strong>
+                        <span>
+                          {e.flags
+                            .filter((f) => !e.accepted_flags.includes(f))
+                            .map((f) => f.replaceAll("_", " "))
+                            .join(" · ")}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+                <label className="check">
+                  <input
+                    autoFocus
+                    type="checkbox"
+                    checked={bulkAcknowledged}
+                    onChange={(e) => setBulkAcknowledged(e.target.checked)}
+                  />
+                  I reviewed all listed flags. Missing values remain
+                  undocumented and uncertainty is acknowledged.
+                </label>
+              </>
             ) : null}
+            <div className="dialog-actions">
+              <button
+                autoFocus={
+                  !state.events.some((e) =>
+                    e.flags.some((f) => !e.accepted_flags.includes(f)),
+                  )
+                }
+                onClick={() => {
+                  setBulkOpen(false);
+                  setBulkAcknowledged(false);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="primary"
+                disabled={
+                  state.events.some((e) =>
+                    e.flags.some((f) => !e.accepted_flags.includes(f)),
+                  ) && !bulkAcknowledged
+                }
+                onClick={acceptAll}
+              >
+                Accept every event
+              </button>
+            </div>
           </section>
         </div>
-        <footer>
-          Hackathon prototype · Not for clinical use · FHIR-lite is not a
-          conformance claim · No treatment recommendations
-        </footer>
-      </main>
+      ) : null}
     </div>
   );
 }

@@ -40,220 +40,238 @@ function EventCard({ event: e, index, update, remove, select }: Props) {
           Remove
         </button>
       </div>
-      <div className="form-grid three">
-        <label>
-          Event type
-          <select
-            value={e.event_type}
-            onChange={(x) => change("event_type", x.target.value)}
-          >
-            <option value="medication_administration">Medication</option>
-            <option value="procedure">Procedure</option>
-            <option value="observation">Observation</option>
-            <option value="unclassified">Unclassified</option>
-          </select>
-        </label>
-        <label>
-          Action status
-          <select
-            value={e.status}
-            onChange={(x) => change("status", x.target.value)}
-          >
-            <option value="reported">Reported performed</option>
-            <option value="negated">Not performed</option>
-            <option value="uncertain">Uncertain</option>
-            <option value="needs_review">Needs review</option>
-          </select>
-        </label>
-        <label htmlFor={`${e.event_id}-time`}>
-          Reported time{" "}
-          <button
-            aria-label="Source"
-            className="evidence"
-            onClick={() => showEvidence("event_time")}
-            type="button"
-          >
-            Source
-          </button>
-          <input
-            id={`${e.event_id}-time`}
-            aria-label={`Event ${index + 1} time`}
-            placeholder="Unknown · HH:MM"
-            value={e.event_time || ""}
-            onChange={(x) => change("event_time", x.target.value || null)}
-          />
-        </label>
+      <div className="event-summary">
+        <span>{e.event_time || "Time not documented"}</span>
+        <span>
+          {e.event_type === "medication_administration"
+            ? `${e.dose?.value ?? "Dose not documented"} ${e.dose?.unit || ""} · ${e.route || "Route not documented"}`
+            : e.observation
+              ? Object.entries(e.observation)
+                  .filter(([key]) => key !== "type")
+                  .map(([, value]) => String(value))
+                  .join(" / ")
+              : e.event_type.replaceAll("_", " ")}
+        </span>
       </div>
-      <label htmlFor={`${e.event_id}-description`}>
-        Description{" "}
-        <button
-          aria-label="Source"
-          className="evidence"
-          onClick={() => showEvidence("description")}
-          type="button"
-        >
-          Source
-        </button>
-        <input
-          id={`${e.event_id}-description`}
-          value={e.description}
-          onChange={(x) => change("description", x.target.value)}
-        />
-      </label>
-      {e.event_type === "medication_administration" ? (
-        <>
-          <label htmlFor={`${e.event_id}-medication`}>
-            Medication{" "}
+      <details className="event-details" open={index === 0}>
+        <summary>Edit fields & inspect evidence</summary>
+        <div className="form-grid three">
+          <label>
+            Event type
+            <select
+              value={e.event_type}
+              onChange={(x) => change("event_type", x.target.value)}
+            >
+              <option value="medication_administration">Medication</option>
+              <option value="procedure">Procedure</option>
+              <option value="observation">Observation</option>
+              <option value="unclassified">Unclassified</option>
+            </select>
+          </label>
+          <label>
+            Action status
+            <select
+              value={e.status}
+              onChange={(x) => change("status", x.target.value)}
+            >
+              <option value="reported">Reported performed</option>
+              <option value="negated">Not performed</option>
+              <option value="uncertain">Uncertain</option>
+              <option value="needs_review">Needs review</option>
+            </select>
+          </label>
+          <label htmlFor={`${e.event_id}-time`}>
+            Reported time{" "}
             <button
               aria-label="Source"
               className="evidence"
-              onClick={() => showEvidence("medication")}
+              onClick={() => showEvidence("event_time")}
               type="button"
             >
               Source
             </button>
             <input
-              id={`${e.event_id}-medication`}
-              value={e.medication || ""}
-              onChange={(x) => change("medication", x.target.value || null)}
+              id={`${e.event_id}-time`}
+              aria-label={`Event ${index + 1} time`}
+              placeholder="Unknown · HH:MM"
+              value={e.event_time || ""}
+              onChange={(x) => change("event_time", x.target.value || null)}
             />
           </label>
-          <div className="form-grid three">
-            <label htmlFor={`${e.event_id}-dose`}>
-              Dose{" "}
-              <button
-                aria-label="Source"
-                className="evidence"
-                onClick={() => showEvidence("dose")}
-                type="button"
-              >
-                Source
-              </button>
-              <input
-                id={`${e.event_id}-dose`}
-                type="number"
-                min="0"
-                step="any"
-                value={e.dose?.value ?? ""}
-                onChange={(x) =>
-                  change("dose", {
-                    ...(e.dose || {}),
-                    value:
-                      x.target.value === "" ? null : Number(x.target.value),
-                  })
-                }
-              />
-            </label>
-            <label>
-              Unit
-              <input
-                value={e.dose?.unit || ""}
-                onChange={(x) =>
-                  change("dose", {
-                    ...(e.dose || {}),
-                    unit: x.target.value || null,
-                  })
-                }
-              />
-            </label>
-            <label htmlFor={`${e.event_id}-route`}>
-              Route{" "}
-              <button
-                aria-label="Source"
-                className="evidence"
-                onClick={() => showEvidence("route")}
-                type="button"
-              >
-                Source
-              </button>
-              <input
-                id={`${e.event_id}-route`}
-                value={e.route || ""}
-                onChange={(x) => change("route", x.target.value || null)}
-              />
-            </label>
-          </div>
-        </>
-      ) : null}
-      {e.event_type === "observation" ? (
-        <div className="observation-fields">
-          <label>
-            Observation type
-            <select
-              value={String(e.observation?.type || "")}
-              onChange={(x) => change("observation", { type: x.target.value })}
-            >
-              <option value="">Select a type</option>
-              <option value="blood_pressure">Blood pressure</option>
-              <option value="heart_rate">Heart rate</option>
-              <option value="spo2">Oxygen saturation</option>
-              <option value="respiratory_rate">Respiratory rate</option>
-              <option value="temperature">Temperature</option>
-            </select>
-          </label>
+        </div>
+        <label htmlFor={`${e.event_id}-description`}>
+          Description{" "}
           <button
             aria-label="Source"
             className="evidence"
-            onClick={() => showEvidence("observation")}
+            onClick={() => showEvidence("description")}
             type="button"
           >
             Source
           </button>
-          <div className="form-grid three">
-            {(e.observation?.type === "blood_pressure"
-              ? ["systolic", "diastolic"]
-              : ["value"]
-            ).map((key) => (
-              <label key={key}>
-                {key === "value"
-                  ? "Value"
-                  : key === "systolic"
-                    ? "Systolic"
-                    : "Diastolic"}
+          <input
+            id={`${e.event_id}-description`}
+            value={e.description}
+            onChange={(x) => change("description", x.target.value)}
+          />
+        </label>
+        {e.event_type === "medication_administration" ? (
+          <>
+            <label htmlFor={`${e.event_id}-medication`}>
+              Medication{" "}
+              <button
+                aria-label="Source"
+                className="evidence"
+                onClick={() => showEvidence("medication")}
+                type="button"
+              >
+                Source
+              </button>
+              <input
+                id={`${e.event_id}-medication`}
+                value={e.medication || ""}
+                onChange={(x) => change("medication", x.target.value || null)}
+              />
+            </label>
+            <div className="form-grid three">
+              <label htmlFor={`${e.event_id}-dose`}>
+                Dose{" "}
+                <button
+                  aria-label="Source"
+                  className="evidence"
+                  onClick={() => showEvidence("dose")}
+                  type="button"
+                >
+                  Source
+                </button>
                 <input
+                  id={`${e.event_id}-dose`}
                   type="number"
+                  min="0"
                   step="any"
-                  value={
-                    typeof e.observation?.[key] === "number"
-                      ? (e.observation[key] as number)
-                      : ""
-                  }
+                  value={e.dose?.value ?? ""}
                   onChange={(x) =>
-                    change("observation", {
-                      ...e.observation,
-                      [key]:
+                    change("dose", {
+                      ...(e.dose || {}),
+                      value:
                         x.target.value === "" ? null : Number(x.target.value),
                     })
                   }
                 />
               </label>
-            ))}
+              <label>
+                Unit
+                <input
+                  value={e.dose?.unit || ""}
+                  onChange={(x) =>
+                    change("dose", {
+                      ...(e.dose || {}),
+                      unit: x.target.value || null,
+                    })
+                  }
+                />
+              </label>
+              <label htmlFor={`${e.event_id}-route`}>
+                Route{" "}
+                <button
+                  aria-label="Source"
+                  className="evidence"
+                  onClick={() => showEvidence("route")}
+                  type="button"
+                >
+                  Source
+                </button>
+                <input
+                  id={`${e.event_id}-route`}
+                  value={e.route || ""}
+                  onChange={(x) => change("route", x.target.value || null)}
+                />
+              </label>
+            </div>
+          </>
+        ) : null}
+        {e.event_type === "observation" ? (
+          <div className="observation-fields">
             <label>
-              Unit
-              <input
-                placeholder="Not documented"
-                value={String(e.observation?.unit || "")}
+              Observation type
+              <select
+                value={String(e.observation?.type || "")}
                 onChange={(x) =>
-                  change("observation", {
-                    ...e.observation,
-                    unit: x.target.value || null,
-                  })
+                  change("observation", { type: x.target.value })
                 }
-              />
+              >
+                <option value="">Select a type</option>
+                <option value="blood_pressure">Blood pressure</option>
+                <option value="heart_rate">Heart rate</option>
+                <option value="spo2">Oxygen saturation</option>
+                <option value="respiratory_rate">Respiratory rate</option>
+                <option value="temperature">Temperature</option>
+              </select>
             </label>
+            <button
+              aria-label="Source"
+              className="evidence"
+              onClick={() => showEvidence("observation")}
+              type="button"
+            >
+              Source
+            </button>
+            <div className="form-grid three">
+              {(e.observation?.type === "blood_pressure"
+                ? ["systolic", "diastolic"]
+                : ["value"]
+              ).map((key) => (
+                <label key={key}>
+                  {key === "value"
+                    ? "Value"
+                    : key === "systolic"
+                      ? "Systolic"
+                      : "Diastolic"}
+                  <input
+                    type="number"
+                    step="any"
+                    value={
+                      typeof e.observation?.[key] === "number"
+                        ? (e.observation[key] as number)
+                        : ""
+                    }
+                    onChange={(x) =>
+                      change("observation", {
+                        ...e.observation,
+                        [key]:
+                          x.target.value === "" ? null : Number(x.target.value),
+                      })
+                    }
+                  />
+                </label>
+              ))}
+              <label>
+                Unit
+                <input
+                  placeholder="Not documented"
+                  value={String(e.observation?.unit || "")}
+                  onChange={(x) =>
+                    change("observation", {
+                      ...e.observation,
+                      unit: x.target.value || null,
+                    })
+                  }
+                />
+              </label>
+            </div>
           </div>
+        ) : null}
+        <div className="source-snippet">
+          <span>Original words</span>
+          <button
+            onClick={() =>
+              select([e.source_offset, e.source_offset + e.source_text.length])
+            }
+          >
+            {e.source_text}
+          </button>
         </div>
-      ) : null}
-      <div className="source-snippet">
-        <span>Original words</span>
-        <button
-          onClick={() =>
-            select([e.source_offset, e.source_offset + e.source_text.length])
-          }
-        >
-          {e.source_text}
-        </button>
-      </div>
+      </details>
       {e.flags.length ? (
         <div className="flags">
           <strong>Review required</strong>

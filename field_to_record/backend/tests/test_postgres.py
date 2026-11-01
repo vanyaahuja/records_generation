@@ -33,7 +33,9 @@ def pg_client(monkeypatch):
 
 
 def test_postgres_review_revision_and_audit(pg_client):
+    patient = pg_client.post("/api/patients", json={"name":"Synthetic PG Patient", "age":34, "gender":"not_specified"}).json()
     body = accept(extracted(pg_client))
+    body["patient_id"] = patient["patient_id"]
     r = pg_client.post("/api/records", json=body)
     assert r.status_code == 200, r.text
     rid = r.json()["record_id"]
@@ -42,3 +44,4 @@ def test_postgres_review_revision_and_audit(pg_client):
     assert pg_client.put("/api/records/" + rid, json=body).status_code == 200
     assert pg_client.get("/api/audit/verify").json()["valid"]
     assert pg_client.get("/api/records/" + rid).json()["version"] == 2
+    assert pg_client.get("/api/patients/" + patient["patient_id"] + "/records").json()[0]["record_id"] == rid

@@ -25,7 +25,7 @@ export type Action =
 export const sample =
   "At 14:05, gave 500 mg paracetamol orally. At 14:10, recorded blood pressure 120/80. At 14:12, performed bandaging. At 14:14, administered salbutamol by inhalation.";
 export const initial: State = {
-  narrative: sample,
+  narrative: "",
   events: [],
   extraction: null,
   recordId: "",

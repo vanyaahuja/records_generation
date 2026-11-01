@@ -61,6 +61,7 @@ def create_pdf(bundle):
         Spacer(1, 12),
         table(
             [
+                ("Patient", f"{record['patient']['name']} / {record['patient']['age']} years / {record['patient']['gender']}" if record.get('patient') else "Not assigned"),
                 (
                     "Case / responder",
                     record["case_id"] + " / " + record["responder_id"],

@@ -10,6 +10,8 @@ from app.main import app
 from app.docgen import FHIR_LITE_SCHEMA
 
 models = [
+    schemas.PatientCreate,
+    schemas.Patient,
     schemas.Word,
     schemas.ExtractRequest,
     schemas.Dose,

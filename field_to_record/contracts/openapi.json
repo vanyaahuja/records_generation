@@ -235,6 +235,22 @@
               "default": 50,
               "title": "Limit"
             }
+          },
+          {
+            "name": "patient_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Patient Id"
+            }
           }
         ],
         "responses": {
@@ -332,6 +348,101 @@
                 }
               ],
               "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients": {
+      "get": {
+        "summary": "Patients",
+        "operationId": "patients_api_patients_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Patient"
+                  },
+                  "type": "array",
+                  "title": "Response Patients Api Patients Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Register Patient",
+        "operationId": "register_patient_api_patients_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatientCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Patient"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{patient_id}/records": {
+      "get": {
+        "summary": "Patient Records",
+        "operationId": "patient_records_api_patients__patient_id__records_get",
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Patient Id"
             }
           }
         ],
@@ -827,8 +938,100 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "Patient": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "age": {
+            "type": "integer",
+            "maximum": 130.0,
+            "minimum": 0.0,
+            "title": "Age"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "female",
+              "male",
+              "nonbinary",
+              "other",
+              "not_specified"
+            ],
+            "title": "Gender"
+          },
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "age",
+          "gender",
+          "patient_id",
+          "created_at"
+        ],
+        "title": "Patient"
+      },
+      "PatientCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "age": {
+            "type": "integer",
+            "maximum": 130.0,
+            "minimum": 0.0,
+            "title": "Age"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "female",
+              "male",
+              "nonbinary",
+              "other",
+              "not_specified"
+            ],
+            "title": "Gender"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "age",
+          "gender"
+        ],
+        "title": "PatientCreate"
+      },
       "SaveRecordRequest": {
         "properties": {
+          "patient_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Id"
+          },
           "case_id": {
             "type": "string",
             "maxLength": 100,

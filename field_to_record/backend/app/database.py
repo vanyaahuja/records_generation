@@ -137,6 +137,9 @@ def init_db():
         if not pg:
             c.execute("PRAGMA journal_mode=WAL")
         ddl = """
+        CREATE TABLE IF NOT EXISTS patients(patient_id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS record_patients(record_id TEXT PRIMARY KEY, patient_id TEXT NOT NULL REFERENCES patients(patient_id));
+        CREATE INDEX IF NOT EXISTS record_patient_idx ON record_patients(patient_id);
         CREATE TABLE IF NOT EXISTS extractions(id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS record_heads(record_id TEXT PRIMARY KEY, version INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS revisions(record_id TEXT NOT NULL, version INTEGER NOT NULL, parent_version INTEGER, payload TEXT NOT NULL, created_at TEXT NOT NULL, actor TEXT NOT NULL, PRIMARY KEY(record_id,version));
@@ -223,6 +226,11 @@ def save_record(
             "INSERT INTO record_heads VALUES(?,?) ON CONFLICT(record_id) DO UPDATE SET version=excluded.version",
             (record_id, version + 1),
         )
+        if payload.get("patient"):
+            c.execute(
+                "INSERT INTO record_patients VALUES(?,?) ON CONFLICT(record_id) DO NOTHING",
+                (record_id, payload["patient"]["patient_id"]),
+            )
         previous = c.execute(
             "SELECT entry_hash FROM audit_log ORDER BY id DESC LIMIT 1"
         ).fetchone()
@@ -282,10 +290,32 @@ def get_record(record_id, version=None):
     }
 
 
-def list_records(query="", limit=50):
+def create_patient(data):
+    patient = {**data, "patient_id": str(uuid.uuid4()), "created_at": now()}
+    with connect(True) as c:
+        c.execute("INSERT INTO patients VALUES(?,?,?)", (patient["patient_id"], pack(patient), patient["created_at"]))
+    return patient
+
+
+def get_patient(patient_id):
+    with connect() as c:
+        row = c.execute("SELECT payload FROM patients WHERE patient_id=?", (patient_id,)).fetchone()
+    return unpack(row["payload"]) if row else None
+
+
+def list_patients():
+    with connect() as c:
+        rows = c.execute("SELECT payload FROM patients ORDER BY created_at DESC LIMIT 1000").fetchall()
+    return [unpack(row["payload"]) for row in rows]
+
+
+def list_records(query="", limit=50, patient_id=None, include_events=False):
     with connect() as c:
         rows = c.execute(
-            "SELECT r.record_id,r.version,r.created_at,r.payload FROM revisions r JOIN record_heads h ON r.record_id=h.record_id AND r.version=h.version ORDER BY r.created_at DESC LIMIT 1000"
+            "SELECT r.record_id,r.version,r.created_at,r.payload FROM revisions r JOIN record_heads h ON r.record_id=h.record_id AND r.version=h.version "
+            + ("JOIN record_patients rp ON rp.record_id=r.record_id WHERE rp.patient_id=? " if patient_id else "")
+            + "ORDER BY r.created_at DESC LIMIT 1000",
+            (patient_id,) if patient_id else (),
         ).fetchall()
     output = []
     for r in rows:
@@ -293,7 +323,7 @@ def list_records(query="", limit=50):
         if (
             query.lower()
             not in (
-                p["case_id"] + " " + p["responder_id"] + " " + r["record_id"]
+                p["case_id"] + " " + p["responder_id"] + " " + r["record_id"] + " " + (p.get("patient") or {}).get("name", "")
             ).lower()
         ):
             continue
@@ -305,6 +335,9 @@ def list_records(query="", limit=50):
                 "case_id": p["case_id"],
                 "record_status": p["record_status"],
                 "event_count": len(p["events"]),
+                "patient": p.get("patient"),
+                "encounter_date": p.get("encounter_date"),
+                **({"events": p["events"]} if include_events else {}),
             }
         )
         if len(output) >= limit:

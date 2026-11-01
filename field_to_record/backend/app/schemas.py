@@ -27,6 +27,24 @@ class Word(StrictModel):
     prob: float = Field(ge=0, le=1)
 
 
+class PatientCreate(StrictModel):
+    name: str = Field(min_length=1, max_length=100)
+    age: int = Field(ge=0, le=130, strict=True)
+    gender: Literal["female", "male", "nonbinary", "other", "not_specified"]
+
+    @field_validator("name")
+    @classmethod
+    def nonblank_name(cls, value):
+        if not value.strip():
+            raise ValueError("Patient name cannot be blank")
+        return value
+
+
+class Patient(PatientCreate):
+    patient_id: str
+    created_at: str
+
+
 class ExtractRequest(StrictModel):
     text: SourceString = Field(min_length=1, max_length=20000)
     case_id: str = Field(default="DEMO-001", min_length=1, max_length=100)
@@ -102,6 +120,7 @@ class ClinicalEvent(StrictModel):
 
 
 class SaveRecordRequest(StrictModel):
+    patient_id: str | None = Field(default=None, max_length=100)
     case_id: str = Field(min_length=1, max_length=100)
     responder_id: str = Field(min_length=1, max_length=100)
     narrative: SourceString = Field(min_length=1, max_length=20000)
@@ -115,6 +134,7 @@ class SaveRecordRequest(StrictModel):
 
 
 class Record(StrictModel):
+    patient: Patient | None = None
     case_id: str
     responder_id: str
     narrative: SourceString

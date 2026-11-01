@@ -86,6 +86,9 @@ def fhir_bundle(bundle):
                 }
             ],
         }
+        if record.get("patient"):
+            patient = record["patient"]
+            resource["subject"] = {"reference": "urn:uuid:" + patient["patient_id"], "display": patient["name"]}
         dt = occurred_at(event, record)
         if kind == "medication_administration":
             resource.update(
@@ -179,6 +182,9 @@ def render_text(bundle):
         "",
         "NEEDS REVIEW / ACCEPTED UNCERTAINTY",
     ]
+    if r.get("patient"):
+        patient = r["patient"]
+        lines.insert(3, f"Patient: {patient['name']} | Age: {patient['age']} | Gender: {patient['gender']} | ID: {patient['patient_id']}")
     flags = [
         f"{e['description']}: {', '.join(e['flags'])}"
         for e in r["events"]

@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-from .schemas import ExtractRequest, SaveRecordRequest, Record
+from .schemas import ExtractRequest, SaveRecordRequest, Record, PatientCreate, Patient
 from .extraction import extract_events, VERSION, DRUGS
 from .normalize import normalize_with_offsets
 from .database import (
@@ -26,6 +26,7 @@ from .database import (
     now,
     digest,
     close_storage,
+    create_patient, get_patient, list_patients,
 )
 from .review import prepare_review
 from .pdf_generator import create_pdf
@@ -174,7 +175,16 @@ def persist(req, rid=None):
             "A revision must refer to the original extraction. Start a new record for a new narrative.",
         )
     events = prepare_review(req, original)
+    patient = get_patient(req.patient_id) if req.patient_id else None
+    if req.patient_id and not patient:
+        raise HTTPException(404, "Patient not found.")
+    if old:
+        previous_patient = old["record"].get("patient")
+        if (previous_patient or {}).get("patient_id") != req.patient_id:
+            raise HTTPException(409, "A saved record cannot be reassigned to another patient.")
+        patient = previous_patient
     payload = Record(
+        patient=patient,
         case_id=req.case_id,
         responder_id=req.responder_id,
         narrative=req.narrative,
@@ -216,8 +226,25 @@ def update_record(record_id: str, req: SaveRecordRequest):
 
 
 @app.get("/api/records")
-def history(q: str = "", limit: int = 50):
-    return list_records(q, max(1, min(limit, 100)))
+def history(q: str = "", limit: int = 50, patient_id: str | None = None):
+    return list_records(q, max(1, min(limit, 100)), patient_id)
+
+
+@app.post("/api/patients", response_model=Patient)
+def register_patient(req: PatientCreate):
+    return create_patient(req.model_dump())
+
+
+@app.get("/api/patients", response_model=list[Patient])
+def patients():
+    return list_patients()
+
+
+@app.get("/api/patients/{patient_id}/records")
+def patient_records(patient_id: str):
+    if not get_patient(patient_id):
+        raise HTTPException(404, "Patient not found.")
+    return list_records(limit=100, patient_id=patient_id, include_events=True)
 
 
 @app.get("/api/audit/verify")
