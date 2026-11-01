@@ -35,18 +35,26 @@ def event_value(event):
     return event.get("description") or unknown
 
 
-def soap_document(record):
-    sections = [{"code": code, "title": title, "rows": []} for code, title in SECTIONS.items()]
-    grouped = {section["code"]: section["rows"] for section in sections}
-    unassigned = []
+def event_rows(record):
+    rows = []
     for event in sorted(record.get("events", []), key=lambda e: e.get("event_time") or "99:99"):
-        section = classify_event(event)
-        row = {
+        rows.append({
             "event_id": event["event_id"], "time": event.get("event_time"),
             "entry": event.get("medication") or event["description"], "value": event_value(event),
             "action_status": event["action_status"], "review_status": event["review_status"],
             "source_text": event["source_text"], "source_offset": event["source_offset"],
             "flags": event["flags"], "accepted_flags": event["accepted_flags"],
-        }
+        })
+    return rows
+
+
+def soap_document(record):
+    # Kept for existing API clients; the product UI uses the flat event table.
+    sections = [{"code": code, "title": title, "rows": []} for code, title in SECTIONS.items()]
+    grouped = {section["code"]: section["rows"] for section in sections}
+    event_by_id = {event["event_id"]: event for event in record.get("events", [])}
+    unassigned = []
+    for row in event_rows(record):
+        section = classify_event(event_by_id[row["event_id"]])
         (grouped[section] if section else unassigned).append(row)
     return {"sections": sections, "unassigned": unassigned, "notice": "Source-only organization. Empty sections are not documented; no assessment or treatment recommendation is generated."}

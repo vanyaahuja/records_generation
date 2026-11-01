@@ -14,6 +14,66 @@ import {
 import { createPortal } from "react-dom";
 import { Icon } from "./Icons";
 
+// Portals keep tooltips above sticky headers, dialogs and clipped chart panels.
+export function FloatingTip({
+  anchor,
+  children,
+  side = "top",
+  className = "",
+}: {
+  anchor: Element;
+  children: ReactNode;
+  side?: "top" | "right";
+  className?: string;
+}) {
+  const tip = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({
+    left: 0,
+    top: 0,
+    visibility: "hidden" as "visible" | "hidden",
+  });
+  useLayoutEffect(() => {
+    const place = () => {
+      if (!tip.current || !anchor.isConnected) return;
+      const box = anchor.getBoundingClientRect(),
+        popup = tip.current.getBoundingClientRect();
+      const left =
+        side === "right"
+          ? box.right + 10
+          : box.left + box.width / 2 - popup.width / 2;
+      const top =
+        side === "right"
+          ? box.top + box.height / 2 - popup.height / 2
+          : box.top - popup.height - 12;
+      setPosition({
+        left: Math.max(8, Math.min(left, innerWidth - popup.width - 8)),
+        top: Math.max(8, Math.min(top, innerHeight - popup.height - 8)),
+        visibility:
+          box.bottom > 0 && box.top < innerHeight ? "visible" : "hidden",
+      });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [anchor, side, children]);
+  if (!anchor.isConnected) return null;
+  return createPortal(
+    <div
+      ref={tip}
+      role="tooltip"
+      className={`floating-tip ${className}`}
+      style={position}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
 function text(node: ReactNode): string {
   return Children.toArray(node)
     .map((child) =>
@@ -112,10 +172,13 @@ export function Select({
     }
     place();
     window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
+    const onScroll = (event: Event) => {
+      if (!popup.current?.contains(event.target as Node)) place();
+    };
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [open]);
   useEffect(() => {

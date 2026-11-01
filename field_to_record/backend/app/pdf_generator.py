@@ -14,7 +14,7 @@ from reportlab.platypus import (
     LongTable,
 )
 from .database import digest
-from .soap import soap_document
+from .soap import event_rows
 
 
 def create_pdf(bundle):
@@ -84,20 +84,19 @@ def create_pdf(bundle):
         p(record["narrative"]),
         Spacer(1, 8),
     ]
-    soap = soap_document(record)
-    for section in soap['sections'] + ([{'code':'—','title':'Unassigned','rows':soap['unassigned']}] if soap['unassigned'] else []):
-        story += [p(section['code']+' - '+section['title'], 'Heading2')]
-        rows = [[p(label) for label in ['Time','Entry','Value','Action / review']]]
-        for row in section['rows']:
-            rows.append([p(row['time'] or 'Not documented'),p(row['entry']),p(row['value']),p(row['action_status'].replace('_',' ')+' / '+row['review_status'].replace('_',' '))])
-        if len(rows) == 1:
-            rows.append([p('Not documented'),p(''),p(''),p('')])
-        grid = LongTable(rows,colWidths=[70,160,150,148],repeatRows=1,hAlign='LEFT')
-        grid.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f1f1f1')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,-1),.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7)]))
-        story += [grid,Spacer(1,10)]
-        for row in section['rows']:
-            if row['flags']:
-                story.append(p(row['entry']+' — Flags: '+', '.join(row['flags'])+' | Accepted: '+(', '.join(row['accepted_flags']) or 'None')))
+    story += [p('Recorded events', 'Heading2')]
+    rows = [[p(label) for label in ['Time','Event','Reading / details','Action / review']]]
+    entries = event_rows(record)
+    for row in entries:
+        rows.append([p(row['time'] or 'Not documented'),p(row['entry']),p(row['value']),p(row['action_status'].replace('_',' ')+' / '+row['review_status'].replace('_',' '))])
+    if len(rows) == 1:
+        rows.append([p('Not documented'),p(''),p(''),p('')])
+    grid = LongTable(rows,colWidths=[70,160,150,148],repeatRows=1,hAlign='LEFT')
+    grid.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f1f1f1')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,-1),.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7)]))
+    story += [grid,Spacer(1,10)]
+    for row in entries:
+        if row['flags']:
+            story.append(p(row['entry']+' — Flags: '+', '.join(row['flags'])+' | Accepted: '+(', '.join(row['accepted_flags']) or 'None')))
     story += [
         p("Audit identity", "Heading2"),
         p("Record ID: " + bundle["record_id"]),

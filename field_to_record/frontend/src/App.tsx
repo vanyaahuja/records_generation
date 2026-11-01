@@ -1,4 +1,9 @@
-import { Select, Notifications, useNotifications } from "./Controls";
+import {
+  Select,
+  Notifications,
+  useNotifications,
+  FloatingTip,
+} from "./Controls";
 import {
   useCallback,
   useEffect,
@@ -17,7 +22,8 @@ import {
   type PatientRecord,
 } from "./Workspace";
 import type { PatientCreate } from "./generated";
-import SoapReview, { soapSection } from "./SoapReview";
+
+import EventTable from "./EventTable";
 import { api } from "./api";
 import { LiveAudio } from "./live";
 import { reducer, initial, sample, type Event, type Extraction } from "./state";
@@ -74,6 +80,24 @@ export default function App() {
   const notifications = useNotifications();
   const setNotice = notifications.notify;
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const transcriptOrigin = useRef<HTMLElement | null>(null);
+  const showTranscription = useCallback(() => {
+    transcriptOrigin.current = document.activeElement as HTMLElement;
+    setTranscriptOpen(true);
+  }, []);
+  useEffect(() => {
+    if (!transcriptOpen) return;
+    return () => {
+      if (transcriptOrigin.current?.isConnected)
+        transcriptOrigin.current.focus({ preventScroll: true });
+    };
+  }, [transcriptOpen]);
+
+  const [navTip, setNavTip] = useState<{
+    anchor: HTMLElement;
+    label: string;
+  } | null>(null);
   const [pendingPatient, setPendingPatient] = useState<PatientProfile | null>(
     null,
   );
@@ -305,12 +329,14 @@ export default function App() {
     eventsRef.current = events;
     dispatch({ type: "events", value: events });
   }, []);
-  const select = useCallback((value: [number, number]) => {
-    dispatch({ type: "select", value });
-    document
-      .getElementById("evidence-transcript")
-      ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, []);
+  const select = useCallback(
+    (value: [number, number]) => {
+      dispatch({ type: "select", value });
+
+      showTranscription();
+    },
+    [showTranscription],
+  );
   function addEvent() {
     const event: Event = {
       soap_section: null,
@@ -340,7 +366,7 @@ export default function App() {
     setBusy(true);
     try {
       const body: SaveRecordRequest = {
-        document_format: "soap",
+        document_format: "timeline",
         patient_id: patient.patient_id,
         case_id: caseId,
         responder_id: responder,
@@ -495,7 +521,6 @@ export default function App() {
     !!state.events.length &&
     state.events.every(
       (e) =>
-        !!soapSection(e) &&
         e.review_status !== "needs_human_confirmation" &&
         e.flags.every((f) => e.accepted_flags.includes(f)),
     );
@@ -503,6 +528,7 @@ export default function App() {
     (e) => e.review_status !== "needs_human_confirmation",
   ).length;
   const span = state.selected;
+
   const visibleEvents = useMemo(
     () =>
       state.events
@@ -510,7 +536,6 @@ export default function App() {
         .filter(
           ({ event }) =>
             filter === "all" ||
-            filter === `soap:${soapSection(event) || "unassigned"}` ||
             filter === event.event_type ||
             filter === event.observation?.type ||
             (filter === "needs_review" &&
@@ -519,11 +544,6 @@ export default function App() {
     [state.events, filter],
   );
   function acceptAll() {
-    if (state.events.some((event) => !soapSection(event))) {
-      setBulkOpen(false);
-      setNotice("Choose a SOAP section for unassigned entries.");
-      return;
-    }
     const flagged = state.events.some((e) =>
       e.flags.some((f) => !e.accepted_flags.includes(f)),
     );
@@ -546,7 +566,8 @@ export default function App() {
   }
   const pageTitle: Record<string, string> = {
     capture: "Capture note",
-    review: "SOAP review",
+
+    review: "Review events",
     dashboard: "Patient overview",
     patients: "Patients",
     records: "Record library",
@@ -595,9 +616,22 @@ export default function App() {
             <button
               key={key}
               aria-label={label}
+
+              onPointerEnter={(e) => {
+                if (!sidebarOpen) setNavTip({ anchor: e.currentTarget, label });
+              }}
+
+              onPointerLeave={() => setNavTip(null)}
+
+              onFocus={(e) => {
+                if (!sidebarOpen) setNavTip({ anchor: e.currentTarget, label });
+              }}
+
+              onBlur={() => setNavTip(null)}
               disabled={busy || live}
               aria-current={page === key ? "page" : undefined}
               onClick={() => {
+                setNavTip(null);
                 setPage(key);
               }}
             >
@@ -611,9 +645,33 @@ export default function App() {
           {state.extraction ? (
             <button
               aria-label="Review events"
+
+              onPointerEnter={(e) => {
+                if (!sidebarOpen)
+                  setNavTip({
+                    anchor: e.currentTarget,
+                    label: "Review events",
+                  });
+              }}
+
+              onPointerLeave={() => setNavTip(null)}
+
+              onFocus={(e) => {
+                if (!sidebarOpen)
+                  setNavTip({
+                    anchor: e.currentTarget,
+                    label: "Review events",
+                  });
+              }}
+
+              onBlur={() => setNavTip(null)}
               aria-current={page === "review" ? "page" : undefined}
               disabled={busy || live}
-              onClick={() => setPage("review")}
+
+              onClick={() => {
+                setNavTip(null);
+                setPage("review");
+              }}
             >
               <Icon name="check" />
               <span>Review events</span>
@@ -1046,16 +1104,25 @@ export default function App() {
               <div className="page-intro">
                 <div>
                   <span className="eyebrow">REVIEW & CONFIRM</span>
-                  <h1>SOAP review</h1>
+
+                  <h1>Review events</h1>
                   <p>
                     Inspect the original words, resolve uncertainty and accept
                     the extracted events.
                   </p>
                 </div>
-                <button onClick={() => setPage("capture")}>
-                  <Icon name="capture" size={16} />
-                  Back to capture
-                </button>
+
+                <div className="review-header-actions">
+                  <button onClick={showTranscription}>
+                    <Icon name="records" size={16} />
+                    Original transcription
+                  </button>
+
+                  <button onClick={() => setPage("capture")}>
+                    <Icon name="capture" size={16} />
+                    Back to capture
+                  </button>
+                </div>
               </div>
               <div className="review-toolbar panel">
                 <div>
@@ -1084,54 +1151,6 @@ export default function App() {
                 </button>
               </div>
               <div className="review-layout">
-                <aside className="evidence-column">
-                  <section className="panel" id="evidence-transcript">
-                    <span className="eyebrow">SOURCE EVIDENCE</span>
-                    <h2>The original words</h2>
-                    <p className="help">
-                      Choose Source on any field to highlight its evidence.
-                    </p>
-                    <div className="transcript">
-                      {span ? (
-                        <>
-                          {Array.from(state.narrative)
-                            .slice(0, span[0])
-                            .join("")}
-                          <mark>
-                            {Array.from(state.narrative)
-                              .slice(...span)
-                              .join("")}
-                          </mark>
-                          {Array.from(state.narrative).slice(span[1]).join("")}
-                        </>
-                      ) : (
-                        state.narrative
-                      )}
-                    </div>
-                    <div className="source-meta">
-                      <Icon name="clock" size={15} />
-                      {encounterDate} · {tz}
-                    </div>
-                  </section>
-                  <section className="panel">
-                    <span className="eyebrow">PROCESSING</span>
-                    <h2>Local & traceable</h2>
-                    <div className="metric-row">
-                      <span>Typed request</span>
-                      <strong>
-                        {latency == null ? "—" : Math.round(latency) + " ms"}
-                      </strong>
-                    </div>
-                    <div className="metric-row">
-                      <span>Last speech inference</span>
-                      <strong>
-                        {asrLatency == null
-                          ? "—"
-                          : Math.round(asrLatency) + " ms"}
-                      </strong>
-                    </div>
-                  </section>
-                </aside>
                 <section className="review-column">
                   <div className="event-filters">
                     <label>
@@ -1144,11 +1163,6 @@ export default function App() {
                         <option value="all">
                           All events ({state.events.length})
                         </option>
-                        <option value="soap:S">S · Subjective</option>
-                        <option value="soap:O">O · Objective</option>
-                        <option value="soap:A">A · Assessment</option>
-                        <option value="soap:P">P · Plan</option>
-                        <option value="soap:unassigned">Unassigned</option>
                         <option value="medication_administration">
                           Medications
                         </option>
@@ -1167,7 +1181,8 @@ export default function App() {
                       Showing {visibleEvents.length} of {state.events.length}
                     </span>
                   </div>
-                  <SoapReview
+
+                  <EventTable
                     events={state.events}
                     visible={visibleEvents}
                     update={update}
@@ -1221,7 +1236,7 @@ export default function App() {
                         <span className="badge reported">Saved locally</span>
                       </div>
                       <div className="export-links">
-                        {["json", "soap", "fhir", "pdf", "html", "text"].map(
+                        {["json", "fhir", "pdf", "html", "text"].map(
                           (format) => (
                             <a
                               key={format}
@@ -1408,6 +1423,73 @@ export default function App() {
           </footer>
         </main>
       </div>
+
+      {navTip && !sidebarOpen ? (
+        <FloatingTip anchor={navTip.anchor} side="right">
+          {navTip.label}
+        </FloatingTip>
+      ) : null}
+
+      {transcriptOpen ? (
+        <div
+          className="dialog-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setTranscriptOpen(false);
+          }}
+        >
+          <section
+            className="panel transcription-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Original transcription"
+
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setTranscriptOpen(false);
+
+              if (e.key === "Tab") {
+                e.preventDefault();
+                e.currentTarget
+                  .querySelector<HTMLButtonElement>("button")
+                  ?.focus();
+              }
+            }}
+          >
+            <header>
+              <div>
+                <h2>Original transcription</h2>
+                <small>
+                  {encounterDate} · {tz}
+                </small>
+              </div>
+
+              <button
+                className="icon-button"
+                autoFocus
+                aria-label="Close transcription"
+                onClick={() => setTranscriptOpen(false)}
+              >
+                <Icon name="close" />
+              </button>
+            </header>
+
+            <div className="transcript">
+              {span ? (
+                <>
+                  {Array.from(state.narrative).slice(0, span[0]).join("")}
+                  <mark>
+                    {Array.from(state.narrative)
+                      .slice(...span)
+                      .join("")}
+                  </mark>
+                  {Array.from(state.narrative).slice(span[1]).join("")}
+                </>
+              ) : (
+                state.narrative
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
       {pendingPatient ? (
         <div className="dialog-backdrop">
           <section

@@ -10,10 +10,10 @@
 | Normalization | Spoken numbers, basic spoken/compact clock times, units and aliases; normalization offset property tests |
 | Extraction | Clause assembly, medication/procedure/observation fields, missing/uncertainty/conflict flags and exact original evidence |
 | Speech | Warm local Whisper, word probabilities, file upload, bounded PCM WebSocket streaming, real synthetic-audio and browser checks |
-| Documentation | Source-only SOAP tables in text, HTML and PDF, SOAP JSON, FHIR-lite with provenance; project schema validation; empty sections remain undocumented |
+| Documentation | Flat event tables in text, HTML and PDF; optional legacy SOAP JSON, FHIR-lite with provenance; project schema validation; unknown values remain undocumented |
 | Audit | Immutable extraction and revision tables, parent revisions, hash chain, original-extraction hash and verification endpoint; tamper tests |
 | Storage | SQLite WAL; optional pooled PostgreSQL with serialized audit commits; optional payload encryption |
-| Review UI | SOAP event tables, optional field editor, evidence selection, explicit section/flag acceptance, add/remove, history and revision exports; monochrome light/dark themes and custom dropdowns/notifications |
+| Review UI | Flat event table, on-demand transcription, optional field editor, source highlighting, explicit flag acceptance, add/remove, history and revision exports; monochrome light/dark themes, colored animated charts with anchored portal tooltips, thin scrollbars and custom dropdowns/notifications |
 | Patient dashboard | Capture-first layout, persisted name/age/gender registry, patient-linked record snapshots, observation/category/date filters, real-value charts and accessible tables, explicit bulk review confirmation; idempotent synthetic seed tool with 100 vital readings in 20 draft notes |
 | PWA | Precached shell; local services still required for processing |
 | Evaluation | Field precision/recall/F1, exact match, missing-field fabrication, source traceability, local HTTP load and synthetic ASR reports |

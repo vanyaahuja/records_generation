@@ -1,5 +1,5 @@
 import { Icon } from "./Icons";
-import { Select } from "./Controls";
+import { Select, FloatingTip } from "./Controls";
 import { useMemo, useState, type FormEvent } from "react";
 import type { Patient, PatientCreate } from "./generated";
 import type { Event } from "./state";
@@ -606,6 +606,10 @@ function EventAnalytics({
   all.forEach((e) =>
     e.flags.forEach((flag) => flags.set(flag, (flags.get(flag) || 0) + 1)),
   );
+  const [segmentTip, setSegmentTip] = useState<{
+    anchor: Element;
+    label: string;
+  } | null>(null);
   const ranked = [...flags].sort((a, b) => b[1] - a[1]).slice(0, 5);
   return (
     <div className="lower-chart-grid">
@@ -631,15 +635,32 @@ function EventAnalytics({
                 key={kind}
                 className={`segment segment-${i}`}
                 style={{ flex: count }}
-              >
-                <span className="chart-tooltip">
-                  {label}: {count}
-                </span>
-              </span>
+                tabIndex={0}
+                aria-label={`${label}: ${count}`}
+                onPointerEnter={(e) =>
+                  setSegmentTip({
+                    anchor: e.currentTarget,
+                    label: `${label}: ${count}`,
+                  })
+                }
+                onPointerLeave={() => setSegmentTip(null)}
+                onFocus={(e) =>
+                  setSegmentTip({
+                    anchor: e.currentTarget,
+                    label: `${label}: ${count}`,
+                  })
+                }
+                onBlur={() => setSegmentTip(null)}
+              ></span>
             ) : null;
           })}
           {!all.length ? <span className="segment-empty" /> : null}
         </div>
+        {segmentTip ? (
+          <FloatingTip anchor={segmentTip.anchor}>
+            {segmentTip.label}
+          </FloatingTip>
+        ) : null}
         <div className="mix-legend">
           {kinds.map(([kind, label], i) => (
             <div key={kind}>
@@ -716,7 +737,10 @@ function ObservationChart({
   points: Point[];
   metric: Metric;
 }) {
-  const [hovered, setHovered] = useState<Point | null>(null);
+  const [hovered, setHovered] = useState<{
+    point: Point;
+    anchor: Element;
+  } | null>(null);
   if (!points.length)
     return (
       <div className="empty-state chart-empty">
@@ -757,7 +781,10 @@ function ObservationChart({
       .join(" ");
   return (
     <>
-      <div className="chart-canvas">
+      <div
+        className="chart-canvas"
+        key={`${metric}-${points.map((p) => p.time + p.value + (p.secondary ?? "")).join("|")}`}
+      >
         <svg
           className="observation-chart"
           viewBox="0 0 650 220"
@@ -807,10 +834,15 @@ function ObservationChart({
                 cy={y(p.value)}
                 r="4.5"
                 className="chart-dot"
+                style={{ animationDelay: `${Math.min(i, 30) * 12}ms` }}
                 tabIndex={0}
-                onPointerEnter={() => setHovered(p)}
+                onPointerEnter={(e) =>
+                  setHovered({ point: p, anchor: e.currentTarget })
+                }
                 onPointerLeave={() => setHovered(null)}
-                onFocus={() => setHovered(p)}
+                onFocus={(e) =>
+                  setHovered({ point: p, anchor: e.currentTarget })
+                }
                 onBlur={() => setHovered(null)}
                 aria-label={`${p.label}: ${p.value} ${p.unit}`}
               ></circle>
@@ -820,10 +852,15 @@ function ObservationChart({
                   cy={y(p.secondary)}
                   r="4"
                   className="chart-dot secondary-dot"
+                  style={{ animationDelay: `${Math.min(i, 30) * 12}ms` }}
                   tabIndex={0}
-                  onPointerEnter={() => setHovered(p)}
+                  onPointerEnter={(e) =>
+                    setHovered({ point: p, anchor: e.currentTarget })
+                  }
                   onPointerLeave={() => setHovered(null)}
-                  onFocus={() => setHovered(p)}
+                  onFocus={(e) =>
+                    setHovered({ point: p, anchor: e.currentTarget })
+                  }
                   onBlur={() => setHovered(null)}
                   aria-label={`${p.label}: diastolic ${p.secondary} ${p.unit}`}
                 ></circle>
@@ -837,16 +874,16 @@ function ObservationChart({
           ))}
         </svg>
         {hovered ? (
-          <div className="reading-tooltip">
-            <span>{hovered.label}</span>
+          <FloatingTip anchor={hovered.anchor} className="reading-tooltip">
+            <span>{hovered.point.label}</span>
             <strong>
-              {hovered.value}
-              {hovered.secondary !== undefined
-                ? `/${hovered.secondary}`
+              {hovered.point.value}
+              {hovered.point.secondary !== undefined
+                ? `/${hovered.point.secondary}`
                 : ""}{" "}
-              {hovered.unit}
+              {hovered.point.unit}
             </strong>
-          </div>
+          </FloatingTip>
         ) : null}
       </div>
       <div className="chart-legend">

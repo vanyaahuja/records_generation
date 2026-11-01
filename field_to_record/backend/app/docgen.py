@@ -5,7 +5,7 @@ from datetime import datetime, date
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from html import escape
 from .database import digest
-from .soap import soap_document, classify_event
+from .soap import event_rows, classify_event
 
 RESOURCE_SCHEMA = {
     "type": "object",
@@ -174,39 +174,34 @@ def fhir_bundle(bundle):
 
 def render_text(bundle):
     r = bundle["record"]
-    lines = ["FIELD-TO-RECORD | SOAP | SYNTHETIC DEMO", "Not clinically verified", f"Case: {r['case_id']} | Status: {r['record_status']}", f"Recorded: {r['recorded_at']} | Revision: {bundle['version']}", f"Reviewer: {r.get('reviewer_id') or 'NOT DOCUMENTED'}"]
+    lines = ["FIELD-TO-RECORD | RECORDED EVENTS | SYNTHETIC DEMO", "Not clinically verified", f"Case: {r['case_id']} | Status: {r['record_status']}", f"Recorded: {r['recorded_at']} | Revision: {bundle['version']}", f"Reviewer: {r.get('reviewer_id') or 'NOT DOCUMENTED'}"]
     if r.get("patient"):
         p = r["patient"]
         lines.append(f"Patient: {p['name']} | Age: {p['age']} | Gender: {p['gender']}")
-    doc = soap_document(r)
-    for section in doc["sections"] + ([{"code":"—", "title":"Unassigned", "rows":doc["unassigned"]}] if doc["unassigned"] else []):
-        lines += ["", section["code"] + " — " + section["title"], "Time | Entry | Value | Action | Review"]
-        if not section["rows"]:
-            lines.append("Not documented")
-        for row in section["rows"]:
-            lines.append(" | ".join([row["time"] or "Not documented",row["entry"],row["value"],row["action_status"],row["review_status"]]))
-            lines.append("Source: " + row["source_text"])
-            if row["flags"]:
-                lines.append("Flags: " + ", ".join(row["flags"]) + " | Accepted: " + (", ".join(row["accepted_flags"]) or "None"))
+    lines += ["", "Time | Event | Reading / details | Action | Review"]
+    for row in event_rows(r):
+        lines.append(" | ".join([row["time"] or "Not documented",row["entry"],row["value"],row["action_status"],row["review_status"]]))
+        lines.append("Source: " + row["source_text"])
+        if row["flags"]:
+            lines.append("Flags: " + ", ".join(row["flags"]) + " | Accepted: " + (", ".join(row["accepted_flags"]) or "None"))
     lines += ["", "SOURCE TRANSCRIPT",r["narrative"],"", "AUDIT",f"Record: {bundle['record_id']}",f"Hash: {digest(r)}","Versions: "+json.dumps(r.get("model_versions", {}))]
     return "\n".join(lines)
 
 
 def render_html(bundle):
     r = bundle["record"]
-    doc = soap_document(r)
     patient = r.get("patient")
     heading = f"{patient['name']} · {patient['age']} · {patient['gender']}" if patient else r["case_id"]
-    body = ['<!doctype html><html lang="en"><meta charset="utf-8"><title>SOAP note</title><style>body{font:14px system-ui;max-width:1100px;margin:32px auto;padding:20px;color:#181818}table{border-collapse:collapse;width:100%;margin-bottom:25px;table-layout:fixed}th,td{text-align:left;vertical-align:top;padding:10px;overflow-wrap:anywhere;border-bottom:1px solid #e8e8e8}th{background:#f4f4f4}h2{font-size:17px}p,small{color:#666}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.8}@media print{body{margin:0;padding:0}thead{display:table-header-group}tr{break-inside:avoid}}</style><body><h1>SOAP note</h1>', '<p>'+escape(heading)+f' · Revision {bundle["version"]}</p><small>Synthetic demonstration · Review required</small>']
-    for section in doc["sections"] + ([{"code":"—","title":"Unassigned","rows":doc["unassigned"]}] if doc["unassigned"] else []):
-        body.append('<h2>'+escape(section['code']+' — '+section['title'])+'</h2><table><thead><tr>'+''.join('<th scope="col">'+label+'</th>' for label in ['Time','Entry','Value','Action','Review','Source'])+'</tr></thead><tbody>')
-        if not section['rows']:
-            body.append('<tr><td colspan="6">Not documented</td></tr>')
-        for row in section['rows']:
-            values=[row['time'] or 'Not documented',row['entry'],row['value'],row['action_status'].replace('_',' '),row['review_status'].replace('_',' '),row['source_text']]
-            body.append('<tr>'+''.join('<td>'+escape(str(value))+'</td>' for value in values)+'</tr>')
-            if row['flags']:
-                body.append('<tr><td colspan="6">Flags: '+escape(', '.join(row['flags']))+' · Accepted: '+escape(', '.join(row['accepted_flags']) or 'None')+'</td></tr>')
-        body.append('</tbody></table>')
+    body = ['<!doctype html><html lang="en"><meta charset="utf-8"><title>Recorded events</title><style>body{font:14px system-ui;max-width:1100px;margin:32px auto;padding:20px;color:#181818}table{border-collapse:collapse;width:100%;margin:24px 0;table-layout:fixed}th,td{text-align:left;vertical-align:top;padding:12px;overflow-wrap:anywhere;border-bottom:1px solid #e8e8e8}th{background:#f4f4f4}h2{font-size:17px}p,small{color:#666}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.8}@media print{body{margin:0;padding:0}thead{display:table-header-group}tr{break-inside:avoid}}</style><body><h1>Recorded events</h1>', '<p>'+escape(heading)+f' · Revision {bundle["version"]}</p><small>Synthetic demonstration · Review required</small>']
+    body.append('<table><thead><tr>'+''.join('<th scope="col">'+label+'</th>' for label in ['Time','Event','Reading / details','Action','Review','Source'])+'</tr></thead><tbody>')
+    rows = event_rows(r)
+    if not rows:
+        body.append('<tr><td colspan="6">Not documented</td></tr>')
+    for row in rows:
+        values=[row['time'] or 'Not documented',row['entry'],row['value'],row['action_status'].replace('_',' '),row['review_status'].replace('_',' '),row['source_text']]
+        body.append('<tr>'+''.join('<td>'+escape(str(value))+'</td>' for value in values)+'</tr>')
+        if row['flags']:
+            body.append('<tr><td colspan="6">Flags: '+escape(', '.join(row['flags']))+' · Accepted: '+escape(', '.join(row['accepted_flags']) or 'None')+'</td></tr>')
+    body.append('</tbody></table>')
     body += ['<h2>Source transcript</h2><pre>'+escape(r['narrative'])+'</pre>','<h2>Audit</h2><p>'+escape(bundle['record_id'])+'</p><pre>'+digest(r)+'</pre></body></html>']
     return ''.join(body)

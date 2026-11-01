@@ -24,8 +24,8 @@ def test_soap_tables_are_source_only_and_exported(client):
     assert sections['P'][0]['action_status'] == 'completed'
     assert client.get(f'/api/records/{rid}/json').json()['soap'] == exported
     html = client.get(f'/api/records/{rid}/html').text
-    assert '<table>' in html and 'Not documented' in html and 'Assessment' in html
-    assert 'Subjective' in client.get(f'/api/records/{rid}/text').text
+    assert '<table>' in html and 'Recorded events' in html and 'Assessment' not in html
+    assert 'RECORDED EVENTS' in client.get(f'/api/records/{rid}/text').text
     assert client.get(f'/api/records/{rid}/pdf').content.startswith(b'%PDF')
     assert client.get('/api/audit/verify').json()['valid']
 
