@@ -359,13 +359,14 @@ main {
 /* Workspace Grid */
 .workspace-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
 
 .capture-column,
 .review-column {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;

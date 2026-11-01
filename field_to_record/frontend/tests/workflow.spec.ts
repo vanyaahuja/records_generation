@@ -56,6 +56,11 @@ test("review, trace evidence, save, revise, export, verify and reopen", async ({
   await expect(page.locator(".exports .mono")).toContainText("revision 2");
   await page.getByRole("button", { name: "Original extraction" }).click();
   await expect(page.locator(".exports pre")).toContainText("500");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
   await page.screenshot({
     path: "test-results/review-desktop.png",
     fullPage: true,
@@ -115,6 +120,11 @@ test("live microphone pipeline emits provisional words and extracts on stop", as
     "Waiting for the next phrase",
     { timeout: 15000 },
   );
+  // A first provisional word can arrive before the fixture's medication name.
+  // Let the spoken phrase reach its last word before deliberately stopping it.
+  await expect(page.locator(".live-preview p")).toContainText(/intravenously/i, {
+    timeout: 30000,
+  });
   await page.getByRole("button", { name: "Stop & extract" }).click();
   await expect(page.locator(".live-preview")).toHaveCount(0, {
     timeout: 30000,

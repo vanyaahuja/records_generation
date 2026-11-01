@@ -18,7 +18,7 @@
 | Evaluation | Field precision/recall/F1, exact match, missing-field fabrication, source traceability, local HTTP load and synthetic ASR reports |
 | Offline verification | Typed save/export/audit and real speech transcription with outbound sockets forbidden; actual Wi-Fi-off clean-device rehearsal still needed |
 | Packaging | Multi-stage non-root application images, baked model, persistent storage, internal-only Compose network; config validation passes |
-| Container execution | All three images built and running; deployed HTTP/revision/export/audit, audio upload and PCM WebSocket checks pass. Latest local rerun encountered host disk exhaustion affecting browser artifacts and Docker logs; full browser rerun remains tracked separately |
+| Container execution | All three images built and healthy after host cache cleanup and an authorized Docker Desktop restart; deployed HTTP/revision/export/audit, audio upload and PCM WebSocket checks pass |
 | Optional upgrades | AWS, cloud sync/outbox, trained ONNX NER, local LLM fallback and multilingual translation not implemented |
 
 This is an evaluated hackathon prototype, not a clinical-grade extractor or a completed literal implementation of every optional item in the original plan. Rule-based negation scope, overlapping entities, unexpected corrections, ASR ambiguity and noisy environments remain important limits. Review is mandatory. No treatment recommendations are produced.

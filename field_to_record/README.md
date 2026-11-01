@@ -38,7 +38,7 @@ Run `cd field_to_record` only when starting from the repository root. All other 
 
 Open http://127.0.0.1:8080. Web, API and ASR are separate non-root application containers. Only the web/gateway port is published, bound to localhost. The Compose network is `internal: true`. A named volume retains SQLite data. After building and pulling images in advance, use `docker compose up --no-build --pull never -d` without networking.
 
-Optional PostgreSQL deployment and replica guidance: [SCALING.md](docs/SCALING.md). All three images have been built and run locally. The deployed HTTP workflow, revision conflicts, five export formats, audit verification, uploaded audio and real-time PCM WebSocket transcription passed `container_verify.py`. The latest synthetic run produced its first nonempty provisional text in 970 ms; this is one measurement, not a latency guarantee.
+Optional PostgreSQL deployment and replica guidance: [SCALING.md](docs/SCALING.md). All three images have been built and run locally. The deployed HTTP workflow, revision conflicts, five export formats, audit verification, uploaded audio and real-time PCM WebSocket transcription passed `container_verify.py`. The latest synthetic run produced its first nonempty provisional text in 1.07 seconds; this is one measurement, not a latency guarantee.
 
 Useful lifecycle and diagnostic commands:
 
@@ -65,6 +65,8 @@ $env:OFFLINE_BUILD = '1'
 ```
 
 Base images must already be available (`python:3.11-slim`, `node:22-bookworm-slim`, and `nginxinc/nginx-unprivileged:stable-alpine`). These caches and model weights are ignored by Git and must be provisioned on each build machine. Leave several GB of host disk space available: a full Windows drive can cause SQLite failures, truncated browser traces and Docker log I/O errors even while containers show as running.
+
+During verification the host drive filled, and Docker continued returning filesystem I/O errors after space was freed. Restarting Docker Desktop restored healthy services; this interrupts all running Docker workloads, so coordinate the restart first. The app's records volume survived. The backend suite passed 111 tests, the separate PostgreSQL integration check passed against PostgreSQL 16, and all four native browser tests passed after correcting the microphone fixture test to wait for the complete spoken phrase. CI targets PostgreSQL 17.
 
 For a prebuilt offline demo, save the images while the build machine has sufficient disk space, then copy the archive to the demo machine:
 
