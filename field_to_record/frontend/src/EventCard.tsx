@@ -1,3 +1,4 @@
+import { Icon } from "./Icons";
 import { Select } from "./Controls";
 import { memo } from "react";
 import type { Event } from "./state";
@@ -38,7 +39,7 @@ function EventCard({
           {String(index + 1).padStart(2, "0")}
         </span>
         <strong>{e.medication || e.description}</strong>
-        <span className={`badge ${e.status}`}>
+        <span className={`badge status-chip status-${e.action_status}`}>
           {e.action_status.replaceAll("_", " ")}
         </span>
         <button
@@ -52,14 +53,23 @@ function EventCard({
       <div className="event-summary">
         <span>{e.event_time || "Time not documented"}</span>
         <span>
-          {e.event_type === "medication_administration"
-            ? `${e.dose?.value ?? "Dose not documented"} ${e.dose?.unit || ""} · ${e.route || "Route not documented"}`
-            : e.observation
-              ? Object.entries(e.observation)
-                  .filter(([key]) => key !== "type")
-                  .map(([, value]) => String(value))
-                  .join(" / ")
-              : e.event_type.replaceAll("_", " ")}
+          {e.event_type === "medication_administration" ? (
+            <>
+              {e.dose?.value == null ? (
+                <span className="missing-chip">Missing dose</span>
+              ) : (
+                `${e.dose.value} ${e.dose.unit || ""}`
+              )}{" "}
+              · {e.route || <span className="missing-chip">Missing route</span>}
+            </>
+          ) : e.observation ? (
+            Object.entries(e.observation)
+              .filter(([key]) => key !== "type")
+              .map(([, value]) => String(value))
+              .join(" / ")
+          ) : (
+            e.event_type.replaceAll("_", " ")
+          )}
         </span>
       </div>
       <details className="event-details" open={expanded || index === 0}>
@@ -99,7 +109,7 @@ function EventCard({
               onClick={() => showEvidence("event_time")}
               type="button"
             >
-              Source
+              <Icon name="source" size={14} />
             </button>
             <input
               id={`${e.event_id}-time`}
@@ -118,7 +128,7 @@ function EventCard({
             onClick={() => showEvidence("description")}
             type="button"
           >
-            Source
+            <Icon name="source" size={14} />
           </button>
           <input
             id={`${e.event_id}-description`}
@@ -136,7 +146,7 @@ function EventCard({
                 onClick={() => showEvidence("medication")}
                 type="button"
               >
-                Source
+                <Icon name="source" size={14} />
               </button>
               <input
                 id={`${e.event_id}-medication`}
@@ -153,7 +163,7 @@ function EventCard({
                   onClick={() => showEvidence("dose")}
                   type="button"
                 >
-                  Source
+                  <Icon name="source" size={14} />
                 </button>
                 <input
                   id={`${e.event_id}-dose`}
@@ -190,7 +200,7 @@ function EventCard({
                   onClick={() => showEvidence("route")}
                   type="button"
                 >
-                  Source
+                  <Icon name="source" size={14} />
                 </button>
                 <input
                   id={`${e.event_id}-route`}
@@ -226,7 +236,7 @@ function EventCard({
               onClick={() => showEvidence("observation")}
               type="button"
             >
-              Source
+              <Icon name="source" size={14} />
             </button>
             <div className="form-grid three">
               {(e.observation?.type === "blood_pressure"
@@ -277,7 +287,10 @@ function EventCard({
           <span>Original words</span>
           <button
             onClick={() =>
-              select([e.source_offset, e.source_offset + e.source_text.length])
+              select([
+                e.source_offset,
+                e.source_offset + Array.from(e.source_text).length,
+              ])
             }
           >
             {e.source_text}

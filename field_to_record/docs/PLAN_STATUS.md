@@ -13,7 +13,8 @@
 | Documentation | Flat event tables in text, HTML and PDF; optional legacy SOAP JSON, FHIR-lite with provenance; project schema validation; unknown values remain undocumented |
 | Audit | Immutable extraction and revision tables, parent revisions, hash chain, original-extraction hash and verification endpoint; tamper tests |
 | Storage | SQLite WAL; optional pooled PostgreSQL with serialized audit commits; optional payload encryption |
-| Review UI | Flat event table, on-demand transcription, optional field editor, source highlighting, explicit flag acceptance, add/remove, history and revision exports; monochrome light/dark themes, colored animated charts with anchored portal tooltips, thin scrollbars and custom dropdowns/notifications |
+| Review UI | Flat event table, on-demand transcription, optional field editor, source highlighting, one-click acceptance including uncertainty, icon actions, add/remove, history and revision exports; monochrome light/dark themes, colored animated charts with anchored portal tooltips, thin scrollbars, green/red status chips, neutral blurred dialogs and custom dropdowns/notifications with moving hover highlights |
+| Overall dashboard | Global all-patient/latest-revision totals without list truncation, daily stacked bars, registration/encounter lines, review ring, category bars and recent records; 7–90-day filters |
 | Patient dashboard | Capture-first layout, persisted name/age/gender registry, patient-linked record snapshots, observation/category/date filters, real-value charts and accessible tables, explicit bulk review confirmation; idempotent synthetic seed tool with 100 vital readings in 20 draft notes |
 | PWA | Precached shell; local services still required for processing |
 | Evaluation | Field precision/recall/F1, exact match, missing-field fabrication, source traceability, local HTTP load and synthetic ASR reports |

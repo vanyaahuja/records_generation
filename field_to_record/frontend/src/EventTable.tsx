@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Icon } from "./Icons";
+import { IconAction } from "./Controls";
 import EventCard from "./EventCard";
 import type { Event } from "./state";
 
 function details(event: Event) {
   const obs = event.observation;
   if (event.event_type === "medication_administration")
-    return `${event.dose?.value ?? "Not documented"} ${event.dose?.unit || ""} · ${event.route || "Not documented"}`;
+    return `${event.dose?.value ?? "—"} ${event.dose?.unit || ""} · ${event.route || "—"}`;
   if (obs)
     return obs.type === "blood_pressure"
       ? `${obs.systolic ?? "—"}/${obs.diastolic ?? "—"} ${obs.unit || ""}`
@@ -47,7 +48,6 @@ export default function EventTable({
               </tr>
             </thead>
             <tbody>
-              {" "}
               {visible.map(({ event, index }) => {
                 const unresolved = event.flags.filter(
                   (flag) => !event.accepted_flags.includes(flag),
@@ -65,9 +65,22 @@ export default function EventTable({
                       <strong>{event.medication || event.description}</strong>
                       <small>{event.event_type.replaceAll("_", " ")}</small>
                     </td>
-                    <td className="event-value">{details(event)}</td>
+                    <td className="event-value">
+                      {details(event)}
+                      {event.flags.length ? (
+                        <div className="entry-flags">
+                          {event.flags.map((flag) => (
+                            <span className="missing-chip" key={flag}>
+                              {flag.replaceAll("_", " ")}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </td>
                     <td>
-                      <span className="badge">
+                      <span
+                        className={`badge status-chip status-${event.action_status}`}
+                      >
                         {event.action_status.replaceAll("_", " ")}
                       </span>
                     </td>
@@ -123,8 +136,9 @@ export default function EventTable({
                     </td>
                     <td>
                       <div className="event-tools">
-                        <button
-                          aria-label={`Source event ${index + 1}`}
+                        <IconAction
+                          icon="source"
+                          label={`Source event ${index + 1}`}
                           onClick={() =>
                             select([
                               event.source_offset,
@@ -132,15 +146,17 @@ export default function EventTable({
                                 Array.from(event.source_text).length,
                             ])
                           }
-                        >
-                          Source
-                        </button>
-                        <button
-                          aria-label={`Edit event ${index + 1}`}
+                        />
+                        <IconAction
+                          icon="edit"
+                          label={`Edit event ${index + 1}`}
                           onClick={() => setEditing(event.event_id)}
-                        >
-                          Edit
-                        </button>
+                        />
+                        <IconAction
+                          icon="delete"
+                          label={`Delete event ${index + 1}`}
+                          onClick={() => remove(index)}
+                        />
                       </div>
                     </td>
                   </tr>

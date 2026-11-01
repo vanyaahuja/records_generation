@@ -31,16 +31,10 @@ async function bulk(page: Page) {
   await page
     .getByRole("button", { name: "Accept all events", exact: true })
     .click();
-  const dialog = page.getByRole("dialog");
-  const flags = dialog.getByRole("checkbox");
-  if (await flags.count()) {
-    await expect(flags).toHaveCSS("appearance", "none");
-    await expect(
-      dialog.getByRole("button", { name: "Accept every event" }),
-    ).toBeDisabled();
-    await flags.check();
-  }
-  await dialog.getByRole("button", { name: "Accept every event" }).click();
+  await expect(
+    page.getByRole("button", { name: "Accept all events", exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 async function noOverflow(page: Page) {
   expect(
@@ -615,5 +609,165 @@ test("record library scopes search and patient switches by ID, including identic
     .fill("LIBRARY-A");
   await expect(
     page.getByRole("heading", { name: "No matching records", exact: true }),
+  ).toBeVisible();
+});
+
+test("editor dropdown layers, aligned fields, status chips, icon actions and one-click uncertainty", async ({
+  page,
+  request,
+}) => {
+  await registered(page, request);
+  await page
+    .getByLabel("On-scene narrative", { exact: true })
+    .fill(
+      "At 14:05 administered salbutamol by inhalation. At 14:10 recorded blood pressure 120/80.",
+    );
+  await page
+    .getByRole("button", { name: "Extract events", exact: true })
+    .click();
+  await expect(page.locator(".event-row")).toHaveCount(2);
+  await expect(
+    page.locator(".event-row").first().locator(".missing-chip"),
+  ).toContainText("missing dose");
+  await expect(
+    page.locator(".event-row").first().locator(".status-completed"),
+  ).toHaveCSS("color", "rgb(24, 121, 78)");
+  await expect(
+    page.locator(".event-row").first().locator(".event-tools button"),
+  ).toHaveCount(3);
+  expect(
+    await page
+      .locator(".event-row")
+      .first()
+      .locator(".event-tools")
+      .innerText(),
+  ).toBe("");
+  await page.getByRole("button", { name: "Edit event 1", exact: true }).click();
+  const editor = page.getByRole("dialog", {
+    name: "Edit event entry",
+    exact: true,
+  });
+  await expect(page.locator(".event-editor-backdrop")).toHaveCSS(
+    "background-color",
+    "rgba(0, 0, 0, 0.3)",
+  );
+  expect(
+    await page
+      .locator(".event-editor-backdrop")
+      .evaluate((node) => getComputedStyle(node).backdropFilter),
+  ).toContain("blur(9px)");
+  const actionBox = await page
+    .getByRole("combobox", { name: "Action status", exact: true })
+    .boundingBox();
+  const timeBox = await page
+    .getByLabel("Event 1 time", { exact: true })
+    .boundingBox();
+  expect(Math.abs(actionBox!.y - timeBox!.y)).toBeLessThan(2);
+  await page
+    .getByRole("combobox", { name: "Action status", exact: true })
+    .click();
+  await expect(page.locator(".select-popover")).toHaveCSS("z-index", "10000");
+  await page.getByRole("option", { name: "Uncertain", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", { name: "Action status", exact: true }),
+  ).toContainText("Uncertain");
+  await choose(page, "Action status", "reported");
+  await expect(editor.locator('input[type="checkbox"]')).toHaveCSS(
+    "appearance",
+    "none",
+  );
+  await page.getByRole("button", { name: "Close editor", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Delete event 2", exact: true })
+    .click();
+  await expect(page.locator(".event-row")).toHaveCount(1);
+  await page
+    .getByRole("button", {
+      name: "Accept all including uncertainty",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Confirm & save", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.locator(".event-row").first().locator(".missing-chip"),
+  ).toContainText("missing dose");
+  await page
+    .getByRole("button", { name: "Confirm & save", exact: true })
+    .click();
+  await expect(page.locator(".exports")).toBeVisible();
+  const href = await page
+    .getByRole("link", { name: "JSON", exact: true })
+    .getAttribute("href");
+  const record = (await (await request.get(href!)).json()).record;
+  expect(record.events[0].accepted_flags).toContain("missing_dose");
+  expect(record.events[0].dose?.value ?? null).toBeNull();
+});
+
+test("overall dashboard totals, real chart data and animated hover indicators", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/?view=overview");
+  await expect(page.locator(".overview-stats .stat-card")).toHaveCount(4);
+  const summary = await (
+    await request.get(
+      "/api/dashboard?days=30&end_date=" +
+        new Date().toLocaleDateString("en-CA"),
+    )
+  ).json();
+  for (const [index, key] of [
+    "patients",
+    "records",
+    "events",
+    "pending_events",
+  ].entries()) {
+    await expect(
+      page.locator(".overview-stats .stat-value").nth(index),
+    ).toHaveText(summary.totals[key].toLocaleString());
+  }
+  await expect(page.locator(".patient-context")).toHaveCount(0);
+  await expect(page.locator(".overview-column")).toHaveCount(30);
+  await choose(page, "Overview date range", "7");
+  await expect(page.locator(".overview-column")).toHaveCount(7);
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  const before = await page
+    .locator(".nav-glider")
+    .evaluate((node) => getComputedStyle(node).transform);
+  await nav.getByRole("button", { name: "Patients", exact: true }).hover();
+  await expect
+    .poll(() =>
+      page
+        .locator(".nav-glider")
+        .evaluate((node) => getComputedStyle(node).transform),
+    )
+    .not.toBe(before);
+  expect(
+    await page
+      .locator(".nav-glider")
+      .evaluate((node) => getComputedStyle(node).transitionProperty),
+  ).toContain("transform");
+  await page
+    .getByRole("combobox", { name: "Overview date range", exact: true })
+    .click();
+  const initial = await page
+    .locator(".option-glider")
+    .evaluate((node) => getComputedStyle(node).transform);
+  await page.getByRole("option", { name: "Last 90 days", exact: true }).hover();
+  await expect
+    .poll(() =>
+      page
+        .locator(".option-glider")
+        .evaluate((node) => getComputedStyle(node).transform),
+    )
+    .not.toBe(initial);
+  await page.getByRole("option", { name: "Last 90 days", exact: true }).click();
+  await expect(page.locator(".overview-column")).toHaveCount(90);
+  await noOverflow(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noOverflow(page);
+  await expect(
+    page.getByRole("heading", { name: "Recorded activity", exact: true }),
   ).toBeVisible();
 });

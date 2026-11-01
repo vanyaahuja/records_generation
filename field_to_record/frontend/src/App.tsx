@@ -7,6 +7,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useReducer,
   useRef,
   useState,
@@ -24,6 +25,7 @@ import {
 import type { PatientCreate } from "./generated";
 
 import EventTable from "./EventTable";
+import Overview from "./Overview";
 import { api } from "./api";
 import { LiveAudio } from "./live";
 import { reducer, initial, sample, type Event, type Extraction } from "./state";
@@ -46,8 +48,10 @@ type History = {
 
 export default function App() {
   const [page, setPage] = useState(() =>
-    new URLSearchParams(window.location.search).get("view") === "dashboard"
-      ? "dashboard"
+    ["overview", "dashboard"].includes(
+      new URLSearchParams(window.location.search).get("view") || "",
+    )
+      ? new URLSearchParams(window.location.search).get("view")!
       : "capture",
   );
   const requestedPatient = useRef(
@@ -65,8 +69,6 @@ export default function App() {
   const [patient, setPatient] = useState<PatientProfile | null>(null);
   const [patientRecords, setPatientRecords] = useState<PatientRecord[]>([]);
   const [filter, setFilter] = useState("all");
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkAcknowledged, setBulkAcknowledged] = useState(false);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [page]);
@@ -544,13 +546,6 @@ export default function App() {
     [state.events, filter],
   );
   function acceptAll() {
-    const flagged = state.events.some((e) =>
-      e.flags.some((f) => !e.accepted_flags.includes(f)),
-    );
-    if (flagged && !bulkAcknowledged) {
-      setBulkOpen(true);
-      return;
-    }
     const accepted = state.events.map((e) => ({
       ...e,
       accepted_flags: [...e.flags],
@@ -560,11 +555,29 @@ export default function App() {
     }));
     eventsRef.current = accepted;
     dispatch({ type: "events", value: accepted });
-    setBulkOpen(false);
-    setBulkAcknowledged(false);
-    setNotice("All events accepted.");
+    setNotice(
+      "All events accepted, including uncertainty. Missing values stay undocumented.",
+    );
   }
+  const navRoot = useRef<HTMLElement>(null);
+  const [navBox, setNavBox] = useState<{ top: number; height: number } | null>(
+    null,
+  );
+  const moveNav = useCallback((node: HTMLElement | null) => {
+    if (node) setNavBox({ top: node.offsetTop, height: node.offsetHeight });
+  }, []);
+  useLayoutEffect(() => {
+    const place = () =>
+      moveNav(
+        navRoot.current?.querySelector<HTMLElement>('[aria-current="page"]') ||
+          null,
+      );
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [page, sidebarOpen, !!state.extraction, moveNav]);
   const pageTitle: Record<string, string> = {
+    overview: "Overview",
     capture: "Capture note",
 
     review: "Review events",
@@ -606,8 +619,29 @@ export default function App() {
             Field<span className="brand-light"> / Record</span>
           </span>
         </a>
-        <nav aria-label="Main navigation">
+        <nav
+          ref={navRoot}
+          aria-label="Main navigation"
+          onPointerLeave={() =>
+            moveNav(
+              navRoot.current?.querySelector<HTMLElement>(
+                '[aria-current="page"]',
+              ) || null,
+            )
+          }
+        >
+          {navBox ? (
+            <span
+              className="nav-glider"
+              aria-hidden="true"
+              style={{
+                height: navBox.height,
+                transform: `translateY(${navBox.top}px)`,
+              }}
+            />
+          ) : null}
           {[
+            ["overview", "Overview"],
             ["capture", "Capture note"],
             ["dashboard", "Patient overview"],
             ["patients", "Patients"],
@@ -618,12 +652,14 @@ export default function App() {
               aria-label={label}
 
               onPointerEnter={(e) => {
+                moveNav(e.currentTarget);
                 if (!sidebarOpen) setNavTip({ anchor: e.currentTarget, label });
               }}
 
               onPointerLeave={() => setNavTip(null)}
 
               onFocus={(e) => {
+                moveNav(e.currentTarget);
                 if (!sidebarOpen) setNavTip({ anchor: e.currentTarget, label });
               }}
 
@@ -647,6 +683,7 @@ export default function App() {
               aria-label="Review events"
 
               onPointerEnter={(e) => {
+                moveNav(e.currentTarget);
                 if (!sidebarOpen)
                   setNavTip({
                     anchor: e.currentTarget,
@@ -657,6 +694,7 @@ export default function App() {
               onPointerLeave={() => setNavTip(null)}
 
               onFocus={(e) => {
+                moveNav(e.currentTarget);
                 if (!sidebarOpen)
                   setNavTip({
                     anchor: e.currentTarget,
@@ -731,55 +769,63 @@ export default function App() {
           </div>
         </header>
         <main id="workspace">
-          <div className="patient-context">
-            <div>
-              <Icon name="patients" />
-              <span>
-                {patient ? (
-                  <>
-                    <strong>{patient.name}</strong>
-                    <small>
-                      {patient.age} years ·{" "}
-                      {patient.gender.replaceAll("_", " ")} · ID{" "}
-                      {patient.patient_id.slice(0, 8)}
-                    </small>
-                  </>
-                ) : (
-                  <>
-                    <strong>No patient selected</strong>
-                    <small>Select a patient to save</small>
-                  </>
-                )}
-              </span>
+          {page !== "overview" ? (
+            <div className="patient-context">
+              <div>
+                <Icon name="patients" />
+                <span>
+                  {patient ? (
+                    <>
+                      <strong>{patient.name}</strong>
+                      <small>
+                        {patient.age} years ·{" "}
+                        {patient.gender.replaceAll("_", " ")} · ID{" "}
+                        {patient.patient_id.slice(0, 8)}
+                      </small>
+                    </>
+                  ) : (
+                    <>
+                      <strong>No patient selected</strong>
+                      <small>Select a patient to save</small>
+                    </>
+                  )}
+                </span>
+              </div>
+              <div>
+                <Select
+                  aria-label="Active patient"
+                  value={patient?.patient_id || ""}
+                  disabled={busy || live}
+                  onChange={(e) => {
+                    const next = patients.find(
+                      (p) => p.patient_id === e.target.value,
+                    );
+                    if (next) choosePatient(next);
+                  }}
+                >
+                  <option value="">Select patient</option>
+                  {patients.map((p) => (
+                    <option key={p.patient_id} value={p.patient_id}>
+                      {p.name} · {p.age} · {p.patient_id.slice(0, 6)}
+                    </option>
+                  ))}
+                </Select>
+                <button
+                  disabled={busy || live}
+                  onClick={() => setPage("patients")}
+                >
+                  <Icon name="plus" size={16} />
+                  New patient
+                </button>
+              </div>
             </div>
-            <div>
-              <Select
-                aria-label="Active patient"
-                value={patient?.patient_id || ""}
-                disabled={busy || live}
-                onChange={(e) => {
-                  const next = patients.find(
-                    (p) => p.patient_id === e.target.value,
-                  );
-                  if (next) choosePatient(next);
-                }}
-              >
-                <option value="">Select patient</option>
-                {patients.map((p) => (
-                  <option key={p.patient_id} value={p.patient_id}>
-                    {p.name} · {p.age} · {p.patient_id.slice(0, 6)}
-                  </option>
-                ))}
-              </Select>
-              <button
-                disabled={busy || live}
-                onClick={() => setPage("patients")}
-              >
-                <Icon name="plus" size={16} />
-                New patient
-              </button>
-            </div>
-          </div>
+          ) : null}
+          {page === "overview" ? (
+            <Overview
+              onOpen={(id) => void openRecord(id)}
+              onCapture={() => setPage("capture")}
+            />
+          ) : null}
           {page === "capture" ? (
             <>
               <div className="capture-intro">
@@ -1140,14 +1186,12 @@ export default function App() {
                 </div>
                 <button
                   className="primary"
+                  aria-label="Accept all events"
                   disabled={!state.events.length || allReviewed || busy}
-                  onClick={() => {
-                    setBulkAcknowledged(false);
-                    setBulkOpen(true);
-                  }}
+                  onClick={acceptAll}
                 >
                   <Icon name="check" size={17} />
-                  Accept all events
+                  Accept all
                 </button>
               </div>
               <div className="review-layout">
@@ -1213,6 +1257,16 @@ export default function App() {
                       >
                         Save draft
                       </button>
+                      {!allReviewed && state.events.length ? (
+                        <button
+                          onClick={acceptAll}
+                          disabled={busy}
+                          aria-label="Accept all including uncertainty"
+                        >
+                          <Icon name="check" size={16} />
+                          Accept all
+                        </button>
+                      ) : null}
                       <button
                         className="primary"
                         disabled={busy || !allReviewed || !patient}
@@ -1538,102 +1592,6 @@ export default function App() {
                 }}
               >
                 Switch patient
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
-      {bulkOpen ? (
-        <div className="dialog-backdrop">
-          <section
-            className="bulk-dialog panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="bulk-title"
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setBulkOpen(false);
-              if (e.key === "Tab") {
-                const elements = e.currentTarget.querySelectorAll<HTMLElement>(
-                  "button:not(:disabled), input",
-                );
-                const first = elements[0],
-                  last = elements[elements.length - 1];
-                if (e.shiftKey && document.activeElement === first) {
-                  e.preventDefault();
-                  last.focus();
-                } else if (!e.shiftKey && document.activeElement === last) {
-                  e.preventDefault();
-                  first.focus();
-                }
-              }
-            }}
-          >
-            <span className="dialog-icon">
-              <Icon name="check" size={28} />
-            </span>
-            <h2 id="bulk-title">Accept all {state.events.length} events?</h2>
-            <p>
-              This applies to the entire note, including events hidden by your
-              current filter. You can still edit any field afterward; edited
-              events need review again.
-            </p>
-            {state.events.some((e) =>
-              e.flags.some((f) => !e.accepted_flags.includes(f)),
-            ) ? (
-              <>
-                <div className="bulk-flags">
-                  {state.events
-                    .filter((e) =>
-                      e.flags.some((f) => !e.accepted_flags.includes(f)),
-                    )
-                    .map((e) => (
-                      <div key={e.event_id}>
-                        <strong>{e.medication || e.description}</strong>
-                        <span>
-                          {e.flags
-                            .filter((f) => !e.accepted_flags.includes(f))
-                            .map((f) => f.replaceAll("_", " "))
-                            .join(" · ")}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-                <label className="check">
-                  <input
-                    autoFocus
-                    type="checkbox"
-                    checked={bulkAcknowledged}
-                    onChange={(e) => setBulkAcknowledged(e.target.checked)}
-                  />
-                  I reviewed all listed flags. Missing values remain
-                  undocumented and uncertainty is acknowledged.
-                </label>
-              </>
-            ) : null}
-            <div className="dialog-actions">
-              <button
-                autoFocus={
-                  !state.events.some((e) =>
-                    e.flags.some((f) => !e.accepted_flags.includes(f)),
-                  )
-                }
-                onClick={() => {
-                  setBulkOpen(false);
-                  setBulkAcknowledged(false);
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                className="primary"
-                disabled={
-                  state.events.some((e) =>
-                    e.flags.some((f) => !e.accepted_flags.includes(f)),
-                  ) && !bulkAcknowledged
-                }
-                onClick={acceptAll}
-              >
-                Accept every event
               </button>
             </div>
           </section>

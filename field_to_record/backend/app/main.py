@@ -6,7 +6,7 @@ from datetime import date
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
 
@@ -32,6 +32,7 @@ from .review import prepare_review
 from .pdf_generator import create_pdf
 from .docgen import fhir_bundle, render_html, render_text
 from .soap import soap_document
+from .analytics import workspace_summary
 from .speech import router as speech_router, resolve_whisper_model_path, engine
 
 logger = logging.getLogger("field-to-record")
@@ -230,6 +231,11 @@ def update_record(record_id: str, req: SaveRecordRequest):
 @app.get("/api/records")
 def history(q: str = "", limit: int = 50, patient_id: str | None = None):
     return list_records(q, max(1, min(limit, 100)), patient_id)
+
+
+@app.get("/api/dashboard")
+def dashboard(days: int = Query(30, ge=7, le=90), end_date: date | None = None):
+    return workspace_summary(days, end_date)
 
 
 @app.post("/api/patients", response_model=Patient)

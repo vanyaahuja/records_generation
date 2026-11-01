@@ -4,7 +4,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "frontend"
-MAPPING = {"capture":"microphone-2-linear","dashboard":"widget-2-linear","patients":"users-group-rounded-linear","records":"document-text-linear","mic":"microphone-2-linear","pulse":"heart-pulse-linear","check":"check-circle-linear","arrow":"arrow-right-linear","plus":"add-circle-linear","moon":"moon-linear","search":"magnifer-linear","shield":"shield-check-linear","clock":"clock-circle-linear","menu":"sidebar-minimalistic-linear","bell":"bell-linear","close":"close-circle-linear","chevron":"alt-arrow-down-linear","sun":"sun-2-linear"}
+MAPPING = {"edit":"pen-linear","delete":"trash-bin-trash-linear","source":"document-text-linear","overview":"chart-square-linear","capture":"microphone-2-linear","dashboard":"widget-2-linear","patients":"users-group-rounded-linear","records":"document-text-linear","mic":"microphone-2-linear","pulse":"heart-pulse-linear","check":"check-circle-linear","arrow":"arrow-right-linear","plus":"add-circle-linear","moon":"moon-linear","search":"magnifer-linear","shield":"shield-check-linear","clock":"clock-circle-linear","menu":"sidebar-minimalistic-linear","bell":"bell-linear","close":"close-circle-linear","chevron":"alt-arrow-down-linear","sun":"sun-2-linear"}
 request = urllib.request.Request("https://raw.githubusercontent.com/iconify/icon-sets/master/json/solar.json", headers={"User-Agent":"FieldToRecord-icon-vendor"})
 with urllib.request.urlopen(request, timeout=60) as response:
     data = json.load(response)

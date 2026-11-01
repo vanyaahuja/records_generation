@@ -74,6 +74,41 @@ export function FloatingTip({
   );
 }
 
+export function IconAction({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  onClick: () => void;
+}) {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  return (
+    <>
+      <button
+        className="icon-action"
+        aria-label={label}
+        onClick={() => {
+          setAnchor(null);
+          onClick();
+        }}
+        onPointerEnter={(e) => setAnchor(e.currentTarget)}
+        onPointerLeave={() => setAnchor(null)}
+        onFocus={(e) => setAnchor(e.currentTarget)}
+        onBlur={() => setAnchor(null)}
+      >
+        <Icon name={icon} size={17} />
+      </button>
+      {anchor ? (
+        <FloatingTip anchor={anchor}>
+          {label.replace(/ event \d+$/, "")}
+        </FloatingTip>
+      ) : null}
+    </>
+  );
+}
+
 function text(node: ReactNode): string {
   return Children.toArray(node)
     .map((child) =>
@@ -139,6 +174,16 @@ export function Select({
   );
   const selected = options.find((option) => option.value === value);
   const searchable = options.length > 8 || label === "Active patient";
+  const [highlight, setHighlight] = useState<{
+    top: number;
+    height: number;
+  } | null>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const item = document.getElementById(`${id}-${active}`);
+    if (item) setHighlight({ top: item.offsetTop, height: item.offsetHeight });
+    else setHighlight(null);
+  }, [open, active, search, position.width, visible.length, id]);
   const close = (focus = false) => {
     setOpen(false);
     setSearch("");
@@ -307,6 +352,16 @@ export function Select({
                 id={`${id}-list`}
                 className="select-options"
               >
+                {highlight ? (
+                  <span
+                    aria-hidden="true"
+                    className="option-glider"
+                    style={{
+                      height: highlight.height,
+                      transform: `translateY(${highlight.top}px)`,
+                    }}
+                  />
+                ) : null}
                 {visible.map((option, index) => (
                   <button
                     type="button"
