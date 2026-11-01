@@ -25,6 +25,7 @@ import {
 import type { PatientCreate } from "./generated";
 
 import EventTable from "./EventTable";
+import RecordMenu from "./RecordMenu";
 import Overview from "./Overview";
 import { api } from "./api";
 import { LiveAudio } from "./live";
@@ -114,9 +115,6 @@ export default function App() {
     [asrLatency, setAsrLatency] = useState<number | null>(null);
   const [history, setHistory] = useState<History[]>([]),
     [query, setQuery] = useState(""),
-    [preview, setPreview] = useState(""),
-    [audit, setAudit] = useState(""),
-    [original, setOriginal] = useState(""),
     [revisions, setRevisions] = useState<Saved["revisions"]>([]);
   const historyRequest = useRef<AbortController | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -254,9 +252,7 @@ export default function App() {
     : history;
   async function extract(text = state.narrative) {
     setBusy(true);
-    setPreview("");
-    setOriginal("");
-    setAudit("");
+
     try {
       const start = performance.now();
       const result = await api<Extraction>("/api/extract", {
@@ -282,9 +278,6 @@ export default function App() {
   }
   function changeNarrative(value: string) {
     dispatch({ type: "narrative", value });
-    setPreview("");
-    setAudit("");
-    setOriginal("");
   }
   const update = useCallback((index: number, patch: Partial<Event>) => {
     const events = eventsRef.current.map((e, i) =>
@@ -390,8 +383,7 @@ export default function App() {
         id: result.record_id,
         version: result.version,
       });
-      setPreview("");
-      setAudit("");
+
       const bundle = await api<Saved>("/api/records/" + result.record_id);
       setRevisions(bundle.revisions);
       setNotice(
@@ -436,9 +428,7 @@ export default function App() {
         },
       });
       setRevisions(r.revisions);
-      setPreview("");
-      setAudit("");
-      setOriginal("");
+
       setNotice(
         "Opened revision " +
           r.version +
@@ -1133,9 +1123,6 @@ export default function App() {
                 if (state.recordId) {
                   dispatch({ type: "narrative", value: "" });
                   setRevisions([]);
-                  setPreview("");
-                  setOriginal("");
-                  setAudit("");
                 }
                 setPage("capture");
               }}
@@ -1278,121 +1265,17 @@ export default function App() {
                     </div>
                   </div>
                   {state.recordId ? (
-                    <section className="panel exports">
-                      <div className="panel-heading">
-                        <div>
-                          <span className="eyebrow">SAVED RECORD</span>
-                          <h2>Record & revision history</h2>
-                          <p className="mono">
-                            {state.recordId} · revision {state.version}
-                          </p>
-                        </div>
-                        <span className="badge reported">Saved locally</span>
-                      </div>
-                      <div className="export-links">
-                        {["json", "fhir", "pdf", "html", "text"].map(
-                          (format) => (
-                            <a
-                              key={format}
-                              href={`/api/records/${state.recordId}/${format}?version=${state.version}`}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              {format === "fhir"
-                                ? "FHIR-lite"
-                                : format.toUpperCase()}
-                              <Icon name="arrow" size={14} />
-                            </a>
-                          ),
-                        )}
-                      </div>
-                      <div className="export-tools">
-                        <button
-                          className="link"
-                          onClick={async () => {
-                            try {
-                              setPreview(
-                                await (
-                                  await fetch(
-                                    `/api/records/${state.recordId}/html?version=${state.version}`,
-                                  )
-                                ).text(),
-                              );
-                            } catch (e) {
-                              setNotice((e as Error).message);
-                            }
-                          }}
-                        >
-                          Preview note
-                        </button>
-                        <button
-                          className="link"
-                          onClick={async () => {
-                            try {
-                              const result = await api<{ valid: boolean }>(
-                                "/api/audit/verify",
-                              );
-                              setAudit(
-                                result.valid
-                                  ? "Verified · audit chain intact"
-                                  : "Audit verification failed",
-                              );
-                            } catch (e) {
-                              setNotice((e as Error).message);
-                            }
-                          }}
-                        >
-                          Verify audit chain
-                        </button>
-                        <button
-                          className="link"
-                          onClick={async () => {
-                            try {
-                              setOriginal(
-                                JSON.stringify(
-                                  await api(
-                                    `/api/records/${state.recordId}/original`,
-                                  ),
-                                  null,
-                                  2,
-                                ),
-                              );
-                            } catch (e) {
-                              setNotice((e as Error).message);
-                            }
-                          }}
-                        >
-                          Original extraction
-                        </button>
-                      </div>
-                      {audit ? <p role="status">{audit}</p> : null}
-                      {preview ? (
-                        <iframe
-                          title="Handover preview"
-                          sandbox=""
-                          srcDoc={preview}
-                        />
-                      ) : null}
-                      {original ? (
-                        <details open>
-                          <summary>Original immutable output</summary>
-                          <pre>{original}</pre>
-                        </details>
-                      ) : null}
-                      <div className="revision-list">
-                        {revisions.map((r) => (
-                          <button
-                            className="link"
-                            key={r.version}
-                            onClick={() =>
-                              void openRecord(state.recordId, r.version)
-                            }
-                          >
-                            Revision {r.version} · {r.actor}
-                          </button>
-                        ))}
-                      </div>
-                    </section>
+                    <RecordMenu
+                      key={`${state.recordId}:${state.version}`}
+                      recordId={state.recordId}
+                      version={state.version}
+                      revisions={revisions}
+                      busy={busy}
+                      onRevision={(version) =>
+                        void openRecord(state.recordId, version)
+                      }
+                      notify={setNotice}
+                    />
                   ) : null}
                 </section>
               </div>
@@ -1578,9 +1461,7 @@ export default function App() {
                 className="primary"
                 onClick={() => {
                   dispatch({ type: "narrative", value: "" });
-                  setPreview("");
-                  setOriginal("");
-                  setAudit("");
+
                   setPatient(pendingPatient);
                   setPendingPatient(null);
                   setPage((current) =>

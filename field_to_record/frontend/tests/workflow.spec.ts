@@ -116,11 +116,17 @@ test("capture first, patient registration, filtered bulk review, revisions and e
     .click();
   await expect(page.locator(".exports")).toBeVisible();
   await page
-    .getByRole("button", { name: "Verify audit chain", exact: true })
+    .getByRole("button", { name: "Record actions", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Verify audit chain", exact: true })
     .click();
   await expect(page.locator(".exports")).toContainText("Verified");
+  await page
+    .getByRole("button", { name: "Export record", exact: true })
+    .click();
   const href = await page
-    .getByRole("link", { name: "FHIR-lite", exact: true })
+    .getByRole("menuitem", { name: "FHIR-lite", exact: true })
     .getAttribute("href");
   expect((await request.get(href!)).status()).toBe(200);
   expect(
@@ -146,9 +152,50 @@ test("capture first, patient registration, filtered bulk review, revisions and e
     .click();
   await expect(page.locator(".exports .mono")).toContainText("revision 2");
   await page
-    .getByRole("button", { name: "Original extraction", exact: true })
+    .getByRole("button", { name: "Record actions", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Original extraction", exact: true })
     .click();
   await expect(page.locator(".exports pre")).toContainText("500");
+  await choose(page, "Record revision", "1");
+  await expect(page.locator(".exports .mono")).toContainText("revision 1");
+  await expect(page.locator(".event-row").first()).toContainText("500 mg");
+  await choose(page, "Record revision", "2");
+  await expect(page.locator(".exports .mono")).toContainText("revision 2");
+  await expect(page.locator(".event-row").first()).toContainText("250 mg");
+  await page
+    .getByRole("button", { name: "Export record", exact: true })
+    .press("ArrowDown");
+  const exportMenu = page.getByRole("menu", {
+    name: "Export record",
+    exact: true,
+  });
+  await expect(
+    exportMenu.getByRole("menuitem", { name: "PDF", exact: true }),
+  ).toBeFocused();
+  await expect(
+    exportMenu.getByRole("menuitem", { name: "PDF", exact: true }),
+  ).toHaveAttribute("href", /version=2$/);
+  await exportMenu
+    .getByRole("menuitem", { name: "PDF", exact: true })
+    .press("End");
+  await expect(
+    exportMenu.getByRole("menuitem", { name: "TEXT", exact: true }),
+  ).toBeFocused();
+  await exportMenu
+    .getByRole("menuitem", { name: "TEXT", exact: true })
+    .press("Escape");
+  await expect(exportMenu).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Export record", exact: true }),
+  ).toBeFocused();
+  await page.getByRole("button", { name: "Preview note", exact: true }).click();
+  await expect(page.getByTitle("Handover preview")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Close record details", exact: true })
+    .click();
+
   await noOverflow(page);
   await page.screenshot({
     path: "test-results/review-desktop.png",
@@ -523,8 +570,11 @@ test("flat event table, on-demand transcription and review without SOAP", async 
     .getByRole("button", { name: "Confirm & save", exact: true })
     .click();
   await expect(page.locator(".exports")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Export record", exact: true })
+    .click();
   const href = await page
-    .getByRole("link", { name: "JSON", exact: true })
+    .getByRole("menuitem", { name: "JSON", exact: true })
     .getAttribute("href");
   const exported = await (await request.get(href!)).json();
   expect(exported.record.document_format).toBe("timeline");
@@ -697,8 +747,11 @@ test("editor dropdown layers, aligned fields, status chips, icon actions and one
     .getByRole("button", { name: "Confirm & save", exact: true })
     .click();
   await expect(page.locator(".exports")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Export record", exact: true })
+    .click();
   const href = await page
-    .getByRole("link", { name: "JSON", exact: true })
+    .getByRole("menuitem", { name: "JSON", exact: true })
     .getAttribute("href");
   const record = (await (await request.get(href!)).json()).record;
   expect(record.events[0].accepted_flags).toContain("missing_dose");
