@@ -92,6 +92,8 @@ export default function App() {
     [audit, setAudit] = useState(""),
     [original, setOriginal] = useState(""),
     [revisions, setRevisions] = useState<Saved["revisions"]>([]);
+  const historyRequest = useRef<AbortController | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("ftr-clean-theme");
@@ -158,7 +160,9 @@ export default function App() {
       return;
     }
     setPatient(next);
-    setPage("capture");
+    setPage((current) =>
+      ["records", "dashboard"].includes(current) ? current : "capture",
+    );
     setFilter("all");
   }
   async function registerPatient(body: PatientCreate) {
@@ -195,14 +199,33 @@ export default function App() {
     };
   }, []);
   const loadHistory = useCallback(async () => {
+    historyRequest.current?.abort();
+    const controller = new AbortController();
+    historyRequest.current = controller;
+    setHistory([]);
+    setHistoryLoading(true);
+    const params = new URLSearchParams({ q: query, limit: "100" });
+    if (patient) params.set("patient_id", patient.patient_id);
     try {
-      setHistory(
-        await api<History[]>("/api/records?q=" + encodeURIComponent(query)),
-      );
+      const rows = await api<History[]>("/api/records?" + params, {
+        signal: controller.signal,
+      });
+      if (!controller.signal.aborted) setHistory(rows);
     } catch (e) {
-      setNotice((e as Error).message);
+      if (!controller.signal.aborted) setNotice((e as Error).message);
+    } finally {
+      if (!controller.signal.aborted) setHistoryLoading(false);
     }
-  }, [query]);
+  }, [query, patient?.patient_id]);
+  useEffect(() => {
+    if (page === "records") void loadHistory();
+    return () => historyRequest.current?.abort();
+  }, [page, loadHistory]);
+  const visibleHistory = patient
+    ? history.filter(
+        (record) => record.patient?.patient_id === patient.patient_id,
+      )
+    : history;
   async function extract(text = state.narrative) {
     setBusy(true);
     setPreview("");
@@ -576,7 +599,6 @@ export default function App() {
               aria-current={page === key ? "page" : undefined}
               onClick={() => {
                 setPage(key);
-                if (key === "records") void loadHistory();
               }}
             >
               <Icon name={key} />
@@ -1015,7 +1037,6 @@ export default function App() {
               }}
               onNavigate={(next) => {
                 setPage(next);
-                if (next === "records") void loadHistory();
               }}
               onOpen={(id) => void openRecord(id)}
             />
@@ -1330,12 +1351,12 @@ export default function App() {
                     aria-label="Search records"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Patient, case, responder or record ID"
+                    placeholder="Case, responder or record ID"
                   />
                   <button className="primary">Search</button>
                 </form>
-                <div className="record-list">
-                  {history.map((r) => (
+                <div className="record-list" aria-busy={historyLoading}>
+                  {visibleHistory.map((r) => (
                     <button
                       key={r.record_id}
                       onClick={() => void openRecord(r.record_id)}
@@ -1358,12 +1379,20 @@ export default function App() {
                       <Icon name="arrow" size={17} />
                     </button>
                   ))}
-                  {!history.length ? (
+                  {!visibleHistory.length ? (
                     <div className="empty-state">
                       <Icon name="records" size={32} />
-                      <h3>No matching records</h3>
+                      <h3>
+                        {historyLoading
+                          ? "Loading records…"
+                          : "No matching records"}
+                      </h3>
                       <p>
-                        Saved notes will appear here. Try a different search.
+                        {historyLoading
+                          ? ""
+                          : patient
+                            ? "No saved notes match this patient and search."
+                            : "Select a patient or try a different search."}
                       </p>
                     </div>
                   ) : null}
@@ -1418,7 +1447,11 @@ export default function App() {
                   setAudit("");
                   setPatient(pendingPatient);
                   setPendingPatient(null);
-                  setPage("capture");
+                  setPage((current) =>
+                    ["records", "dashboard"].includes(current)
+                      ? current
+                      : "capture",
+                  );
                   setFilter("all");
                 }}
               >

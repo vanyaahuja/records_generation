@@ -189,11 +189,27 @@ test("patient chart uses saved values, metric filters and isolated histories", a
     .click();
   await expect(page.locator(".chart-reading")).toContainText("118/78");
   await expect(page.locator(".chart-dot")).toHaveCount(4);
+  const primaryColor = await page
+    .locator(".chart-dot")
+    .first()
+    .evaluate((dot) => getComputedStyle(dot).fill);
+  const secondaryColor = await page
+    .locator(".secondary-dot")
+    .first()
+    .evaluate((dot) => getComputedStyle(dot).fill);
+  expect(primaryColor).not.toBe(secondaryColor);
+  expect(primaryColor).toBe("rgb(13, 148, 136)");
   await page.locator(".chart-dot").first().focus();
   await expect(page.locator(".reading-tooltip")).toContainText("120/80");
   await choose(page, "Chart observation", "heart_rate");
   await expect(page.locator(".chart-reading")).toContainText("88");
   await expect(page.locator(".chart-dot")).toHaveCount(2);
+  expect(
+    await page
+      .locator(".chart-dot")
+      .first()
+      .evaluate((dot) => getComputedStyle(dot).fill),
+  ).not.toBe(primaryColor);
   await page.locator(".chart-panel .chart-data summary").click();
   await expect(page.locator(".chart-panel .chart-data")).toContainText(
     "96 beats/min",
@@ -360,6 +376,11 @@ test("custom controls, collapsible sidebar and notifications", async ({
   await page
     .getByRole("combobox", { name: "Active patient", exact: true })
     .click();
+  await expect(page.locator(".select-popover")).toHaveCSS("box-shadow", "none");
+  await expect(page.locator(".select-options")).toHaveCSS(
+    "scrollbar-width",
+    "none",
+  );
   await page
     .getByRole("textbox", { name: "Search Active patient", exact: true })
     .fill("No such person");
@@ -484,4 +505,76 @@ test("SOAP sections are tabular and unassigned statements require categorization
   ).toBeVisible();
   await expect(page.locator(".soap-event-row")).toHaveCount(1);
   await expect(page.locator(".event-card")).toHaveCount(0);
+});
+
+test("record library scopes search and patient switches by ID, including identical names", async ({
+  page,
+  request,
+}) => {
+  const name = `Synthetic Library ${Date.now()}`;
+  const a = await registered(page, request, name);
+  const b = await (
+    await request.post("/api/patients", {
+      data: { name, age: 34, gender: "female" },
+    })
+  ).json();
+  for (const [patient, caseId] of [
+    [a, "LIBRARY-A"],
+    [b, "LIBRARY-B"],
+  ] as const) {
+    const extraction = await (
+      await request.post("/api/extract", {
+        data: {
+          text: "At 14:10 recorded blood pressure 120/80.",
+          case_id: caseId,
+          responder_id: "SYNTHETIC-TEST",
+        },
+      })
+    ).json();
+    const result = await request.post("/api/records", {
+      data: {
+        patient_id: patient.patient_id,
+        case_id: caseId,
+        responder_id: "SYNTHETIC-TEST",
+        narrative: extraction.narrative,
+        events: extraction.events,
+        extraction_id: extraction.extraction_id,
+        encounter_date: extraction.encounter_date,
+        tz: extraction.tz,
+        document_format: "soap",
+      },
+    });
+    expect(result.ok()).toBeTruthy();
+  }
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  await nav
+    .getByRole("button", { name: "Record library", exact: true })
+    .click();
+  await expect(page.locator(".record-list > button")).toHaveCount(1);
+  await expect(page.locator(".record-list")).toContainText("LIBRARY-A");
+  await expect(page.locator(".record-list")).not.toContainText("LIBRARY-B");
+  await page
+    .getByRole("textbox", { name: "Search records", exact: true })
+    .fill("LIBRARY-B");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "No matching records", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Search records", exact: true })
+    .fill("");
+  await expect(page.locator(".record-list > button")).toHaveCount(1);
+  await choose(page, "Active patient", b.patient_id);
+  await expect(
+    page.getByRole("heading", { name: "Records", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".record-list > button")).toHaveCount(1);
+  await expect(page.locator(".record-list")).toContainText("LIBRARY-B");
+  await expect(page.locator(".record-list")).not.toContainText("LIBRARY-A");
+  await page
+    .getByRole("textbox", { name: "Search records", exact: true })
+    .fill("LIBRARY-A");
+  await expect(
+    page.getByRole("heading", { name: "No matching records", exact: true }),
+  ).toBeVisible();
 });

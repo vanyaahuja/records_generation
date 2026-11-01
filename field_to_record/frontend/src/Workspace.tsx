@@ -354,7 +354,7 @@ export function PatientDashboard({
         ))}
       </div>
       <div className="analytics-grid">
-        <section className="panel chart-panel">
+        <section className="panel chart-panel" data-metric={metric}>
           <div className="panel-heading">
             <div>
               <span className="eyebrow">OBSERVATION TRENDS</span>
@@ -448,8 +448,6 @@ export function PatientDashboard({
                     <span
                       style={{
                         width: `${percent}%`,
-                        background:
-                          percent === 100 ? "var(--mint)" : "var(--accent)",
                       }}
                     />
                   </div>

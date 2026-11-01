@@ -2792,11 +2792,17 @@ button {
 .category-totals .breakdown {
   margin: 16px 0;
 }
-.breakdown .bar-track > span,
-.breakdown:nth-child(3) .bar-track > span,
-.breakdown:nth-child(4) .bar-track > span,
+.breakdown .bar-track > span {
+  background: var(--chart-violet);
+}
+.breakdown:nth-child(3) .bar-track > span {
+  background: var(--chart-blue);
+}
+.breakdown:nth-child(4) .bar-track > span {
+  background: var(--chart-teal);
+}
 .breakdown:nth-child(5) .bar-track > span {
-  background: #888;
+  background: var(--chart-amber);
 }
 .recent-records .eyebrow {
   display: none;
@@ -3754,7 +3760,7 @@ footer a {
 }
 .select-trigger.is-open {
   background: var(--accent-soft);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: none;
 }
 .select-trigger.is-open svg {
   transform: rotate(180deg);
@@ -3765,16 +3771,31 @@ footer a {
   background: var(--card);
   border-radius: 13px;
   padding: 6px;
-  overflow: auto;
-  box-shadow:
-    0 10px 42px #223a5624,
-    0 2px 8px #223a5610;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: none;
   animation: appear 0.14s ease;
 }
 .select-options {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.select-options::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.select-trigger:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+  box-shadow: none;
 }
 .select-options > button {
   width: 100%;
@@ -3799,6 +3820,7 @@ footer a {
 }
 .select-search {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 7px;
   padding: 5px 9px 8px;
@@ -4318,6 +4340,11 @@ footer a {
 }
 :root {
   --accent: #252525;
+  --chart-teal: #0d9488;
+  --chart-blue: #2563eb;
+  --chart-violet: #7c3aed;
+  --chart-amber: #d97706;
+  --chart-orange: #ea580c;
   --accent-soft: #eeeeee;
   --mint: #7f7f7f;
   --blue: #b0b0b0;
@@ -4333,6 +4360,11 @@ footer a {
 }
 .dark {
   --accent: #e5e5e5;
+  --chart-teal: #2dd4bf;
+  --chart-blue: #60a5fa;
+  --chart-violet: #a78bfa;
+  --chart-amber: #fbbf24;
+  --chart-orange: #fb923c;
   --accent-soft: #303030;
   --mint: #aaa;
   --blue: #777;
@@ -4374,34 +4406,84 @@ footer a {
   color: var(--foreground);
 }
 .segment-0 {
-  background: #aaa;
+  background: var(--chart-violet);
 }
 .segment-1 {
-  background: #888;
+  background: var(--chart-blue);
 }
 .segment-2 {
-  background: #555;
+  background: var(--chart-teal);
 }
 .segment-3 {
-  background: #bbb;
+  background: var(--chart-amber);
 }
 .flag-track > span {
-  background: #333;
+  background: var(--chart-amber);
 }
 .flag-track > .flag-color-1 {
-  background: #555;
+  background: var(--chart-orange);
 }
 .flag-track > .flag-color-2 {
-  background: #777;
+  background: var(--chart-violet);
 }
 .flag-track > .flag-color-3 {
-  background: #999;
+  background: var(--chart-blue);
 }
 .flag-track > .flag-color-4 {
-  background: #bbb;
+  background: var(--chart-teal);
+}
+.stat-card .stat-sparkline {
+  fill: var(--chart-blue);
+}
+.stat-card:nth-child(2) .stat-sparkline {
+  fill: var(--chart-teal);
+}
+.stat-card:nth-child(3) .stat-sparkline {
+  fill: var(--chart-violet);
 }
 .stat-card:nth-child(4) .stat-sparkline {
-  fill: #999;
+  fill: var(--chart-amber);
+}
+.chart-panel {
+  --chart-primary: var(--chart-teal);
+  --chart-secondary: var(--chart-blue);
+}
+.chart-panel[data-metric="heart_rate"] {
+  --chart-primary: var(--chart-orange);
+}
+.chart-panel[data-metric="spo2"] {
+  --chart-primary: var(--chart-blue);
+}
+.chart-panel[data-metric="respiratory_rate"] {
+  --chart-primary: var(--chart-violet);
+}
+.chart-panel[data-metric="temperature"] {
+  --chart-primary: var(--chart-amber);
+}
+.chart-line {
+  stroke: var(--chart-primary);
+}
+.secondary-line {
+  stroke: var(--chart-secondary);
+}
+.chart-dot {
+  fill: var(--chart-primary);
+}
+.secondary-dot {
+  fill: var(--chart-secondary);
+}
+.chart-area,
+.chart-legend {
+  color: var(--chart-primary);
+}
+.observation-chart > defs stop {
+  stop-color: var(--chart-primary);
+}
+.chart-legend span + span {
+  color: var(--chart-secondary);
+}
+.activity-track > span {
+  background: var(--chart-teal);
 }
 .quick-grid svg {
   color: var(--foreground);
