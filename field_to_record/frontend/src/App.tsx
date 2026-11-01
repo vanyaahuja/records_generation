@@ -1,3 +1,4 @@
+import { Select, Notifications, useNotifications } from "./Controls";
 import {
   useCallback,
   useEffect,
@@ -55,8 +56,11 @@ export default function App() {
       new Date().toLocaleDateString("en-CA"),
     ),
     [tz, setTz] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [notice, setNotice] = useState(
-    "Use synthetic notes only. Review every event before confirming.",
+  const notifications = useNotifications();
+  const setNotice = notifications.notify;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingPatient, setPendingPatient] = useState<PatientProfile | null>(
+    null,
   );
   const [busy, setBusy] = useState(false),
     [live, setLive] = useState(false),
@@ -75,12 +79,10 @@ export default function App() {
     [revisions, setRevisions] = useState<Saved["revisions"]>([]);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("ftr-charcoal-theme");
+      const saved = localStorage.getItem("ftr-clean-theme");
       if (saved === "light" || saved === "dark") return saved;
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches)
-        return "dark";
     }
-    return "dark";
+    return "light";
   });
 
   useEffect(() => {
@@ -90,7 +92,7 @@ export default function App() {
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem("ftr-charcoal-theme", theme);
+    localStorage.setItem("ftr-clean-theme", theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
@@ -128,16 +130,8 @@ export default function App() {
       (patient || state.recordId) &&
       state.narrative.trim()
     ) {
-      if (
-        !window.confirm(
-          "Switch patient and clear the current workspace? Saved notes remain in history.",
-        )
-      )
-        return;
-      dispatch({ type: "narrative", value: "" });
-      setPreview("");
-      setOriginal("");
-      setAudit("");
+      setPendingPatient(next);
+      return;
     }
     setPatient(next);
     setPage("capture");
@@ -150,6 +144,7 @@ export default function App() {
     });
     setPatients((previous) => [created, ...previous]);
     choosePatient(created);
+    setNotice("Patient added.");
   }
   useEffect(() => {
     let mounted = true;
@@ -205,9 +200,7 @@ export default function App() {
       setPage("review");
       setFilter("all");
       setLatency(performance.now() - start);
-      setNotice(
-        "Extraction complete. Select Source to inspect evidence, resolve flags, and accept each event.",
-      );
+      setNotice("Extraction complete");
     } catch (e) {
       setNotice((e as Error).message);
     } finally {
@@ -386,13 +379,10 @@ export default function App() {
     setLive(true);
     setPartial("");
     setLiveEvents([]);
-    setNotice(
-      "Connecting to local speech. Speak clearly; provisional words can change.",
-    );
+    setNotice("Connecting microphone…");
     speech.current = new LiveAudio(
       (message) => {
-        if (message.type === "ready")
-          setNotice("Listening locally. Pause briefly between events.");
+        if (message.type === "ready") setNotice("Listening");
         if (message.type === "partial" || message.type === "final") {
           if (message.type === "final") {
             committed = message.transcript || committed;
@@ -445,7 +435,7 @@ export default function App() {
         [state.narrative.trim(), r.text].filter(Boolean).join("\n"),
       );
       setAsrLatency(r.inference_ms);
-      setNotice("Transcript appended. Review the words, then extract events.");
+      setNotice("Audio transcribed.");
     } catch (e) {
       setNotice((e as Error).message);
     } finally {
@@ -496,7 +486,7 @@ export default function App() {
     dispatch({ type: "events", value: accepted });
     setBulkOpen(false);
     setBulkAcknowledged(false);
-    setNotice("All events accepted. Check the patient, then confirm and save.");
+    setNotice("All events accepted.");
   }
   const pageTitle: Record<string, string> = {
     capture: "Capture note",
@@ -506,11 +496,24 @@ export default function App() {
     records: "Record library",
   };
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell ${sidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}
+    >
       <a className="skip-link" href="#workspace">
         Skip to workspace
       </a>
-      <aside className="sidebar">
+      <aside
+        id="main-sidebar"
+        className="sidebar"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setSidebarOpen(false);
+            document
+              .querySelector<HTMLButtonElement>(".sidebar-toggle")
+              ?.focus();
+          }
+        }}
+      >
         <a
           className="brand"
           href="#"
@@ -526,14 +529,6 @@ export default function App() {
             Field<span className="brand-light"> / Record</span>
           </span>
         </a>
-        <div className="workspace-label">
-          <span className="workspace-avatar">F</span>
-          <span>
-            Local workspace<small>Synthetic demonstration</small>
-          </span>
-          <span className="connection-dot" />
-        </div>
-        <span className="nav-heading">WORKSPACE</span>
         <nav aria-label="Main navigation">
           {[
             ["capture", "Capture note"],
@@ -560,24 +555,25 @@ export default function App() {
           ))}
           {state.extraction ? (
             <button
+              aria-label="Review events"
               aria-current={page === "review" ? "page" : undefined}
               disabled={busy || live}
               onClick={() => setPage("review")}
             >
               <Icon name="check" />
-              Review events
+              <span>Review events</span>
               <span className="nav-count">{state.events.length}</span>
             </button>
           ) : null}
         </nav>
         <div className="sidebar-bottom">
-          <div className="local-card">
-            <Icon name="shield" />
-            <strong>Built to work offline.</strong>
-            <p>Your words stay with your local processing service.</p>
-            <span className="local-pill">LOCAL PROCESSING</span>
-          </div>
-          <button className="theme-toggle" onClick={toggleTheme}>
+          <button
+            className="theme-toggle"
+            aria-label={
+              theme === "light" ? "Switch to dark" : "Switch to light"
+            }
+            onClick={toggleTheme}
+          >
             <Icon name="moon" />
             {theme === "light" ? "Switch to dark" : "Switch to light"}
           </button>
@@ -589,8 +585,27 @@ export default function App() {
           </div>
         </div>
       </aside>
-      <div className="main-shell">
+      <div
+        className="main-shell"
+        onPointerDown={(e) => {
+          if (
+            sidebarOpen &&
+            window.innerWidth < 600 &&
+            !(e.target as Element).closest(".sidebar-toggle")
+          )
+            setSidebarOpen(false);
+        }}
+      >
         <header className="topbar">
+          <button
+            className="icon-button sidebar-toggle"
+            aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            aria-controls="main-sidebar"
+            aria-expanded={sidebarOpen}
+            onClick={() => setSidebarOpen((open) => !open)}
+          >
+            <Icon name="menu" />
+          </button>
           <div className="breadcrumb">
             <span>Workspace</span>
             <span>/</span>
@@ -598,10 +613,8 @@ export default function App() {
           </div>
           <div className="service-status">
             <span className={`status-dot ${apiReady ? "online" : ""}`} />
-            {apiReady ? "Local API ready" : "Connecting to API"}
-            <span className="top-divider" />
-            <Icon name="shield" size={16} />
-            <span>{network ? "Device workspace" : "Offline workspace"}</span>
+            {apiReady ? "Online" : "Connecting"}
+            <Notifications store={notifications} />
           </div>
         </header>
         <main id="workspace">
@@ -621,15 +634,13 @@ export default function App() {
                 ) : (
                   <>
                     <strong>No patient selected</strong>
-                    <small>
-                      Capture first, then assign a patient before saving
-                    </small>
+                    <small>Select a patient to save</small>
                   </>
                 )}
               </span>
             </div>
             <div>
-              <select
+              <Select
                 aria-label="Active patient"
                 value={patient?.patient_id || ""}
                 disabled={busy || live}
@@ -646,7 +657,7 @@ export default function App() {
                     {p.name} · {p.age} · {p.patient_id.slice(0, 6)}
                   </option>
                 ))}
-              </select>
+              </Select>
               <button
                 disabled={busy || live}
                 onClick={() => setPage("patients")}
@@ -684,8 +695,8 @@ export default function App() {
                         {live
                           ? "Listening locally"
                           : speechReady
-                            ? "Speech engine ready"
-                            : "Speech warms on first connection"}
+                            ? "Ready to record"
+                            : "Preparing speech"}
                       </span>
                       <span className="shortcut-label">VOICE OR TEXT</span>
                     </div>
@@ -710,7 +721,7 @@ export default function App() {
                       <p>
                         {live
                           ? "Pause briefly between events. Stop when your paragraph is complete."
-                          : "One paragraph. Every important detail."}
+                          : "Speak naturally"}
                       </p>
                       {live ? (
                         <button
@@ -756,7 +767,7 @@ export default function App() {
                     ) : null}
                     <div className="narrative-input">
                       <div>
-                        <label htmlFor="narrative">Your on-scene note</label>
+                        <label htmlFor="narrative">Your note</label>
                         <span>
                           {state.narrative.length.toLocaleString()} / 20,000
                         </span>
@@ -769,7 +780,7 @@ export default function App() {
                         disabled={live || busy}
                         value={state.narrative}
                         onChange={(e) => changeNarrative(e.target.value)}
-                        placeholder="Or type here. For example: At 14:05, recorded blood pressure 120/80…"
+                        placeholder="Speak or type a note…"
                       />
                     </div>
                     <div className="capture-actions">
@@ -812,7 +823,7 @@ export default function App() {
                       </button>
                     </div>
                   </section>
-                  <div className="capture-promises">
+                  <div className="capture-promises" hidden>
                     <span>
                       <Icon name="shield" size={17} />
                       Local speech processing
@@ -881,7 +892,7 @@ export default function App() {
                     <p>
                       {patient
                         ? `${patient.age} years · ${patient.gender.replaceAll("_", " ")}`
-                        : "Select or register a patient before saving."}
+                        : "Select a patient"}
                     </p>
                   </div>
                   <div className="rail-date">
@@ -920,7 +931,7 @@ export default function App() {
                   ) : (
                     <div className="rail-empty">
                       <Icon name="records" size={22} />
-                      <p>Your patient’s saved notes will appear here.</p>
+                      <p>No notes yet</p>
                     </div>
                   )}
                   <div className="rail-note">
@@ -936,7 +947,7 @@ export default function App() {
               <div className="page-intro">
                 <div>
                   <span className="eyebrow">PATIENT WORKSPACE</span>
-                  <h1>Keep every story together.</h1>
+                  <h1>Patients</h1>
                   <p>
                     Register a patient, select their profile and start a new
                     note.
@@ -969,6 +980,10 @@ export default function App() {
                 }
                 setPage("capture");
               }}
+              onNavigate={(next) => {
+                setPage(next);
+                if (next === "records") void loadHistory();
+              }}
               onOpen={(id) => void openRecord(id)}
             />
           ) : null}
@@ -977,7 +992,7 @@ export default function App() {
               <div className="page-intro">
                 <div>
                   <span className="eyebrow">REVIEW & CONFIRM</span>
-                  <h1>A record you can trace.</h1>
+                  <h1>Review</h1>
                   <p>
                     Inspect the original words, resolve uncertainty and accept
                     the extracted events.
@@ -1067,7 +1082,7 @@ export default function App() {
                   <div className="event-filters">
                     <label>
                       <span className="sr-only">Filter events</span>
-                      <select
+                      <Select
                         aria-label="Filter events"
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
@@ -1087,7 +1102,7 @@ export default function App() {
                         ))}
                         <option value="unclassified">Other statements</option>
                         <option value="needs_review">Awaiting review</option>
-                      </select>
+                      </Select>
                     </label>
                     <span className="help">
                       Showing {visibleEvents.length} of {state.events.length}
@@ -1272,10 +1287,8 @@ export default function App() {
               <div className="page-intro">
                 <div>
                   <span className="eyebrow">LOCAL RECORD LIBRARY</span>
-                  <h1>Every note. A clear trail.</h1>
-                  <p>
-                    Search patient names, case IDs, responders or record IDs.
-                  </p>
+                  <h1>Records</h1>
+                  <p></p>
                 </div>
               </div>
               <section className="panel">
@@ -1332,16 +1345,63 @@ export default function App() {
               </section>
             </>
           ) : null}
-          <div className="workspace-notice" role="status">
-            <Icon name="shield" size={17} />
-            <span>{notice}</span>
-          </div>
           <footer>
-            Field / Record · Synthetic-data prototype · Not for clinical use ·
-            No treatment recommendations
+            <span>Synthetic demo · Not for clinical use</span>
+            <a href="/credits.html" target="_blank" rel="noreferrer">
+              Credits
+            </a>
           </footer>
         </main>
       </div>
+      {pendingPatient ? (
+        <div className="dialog-backdrop">
+          <section
+            className="bulk-dialog panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="switch-title"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setPendingPatient(null);
+              if (e.key === "Tab") {
+                const controls = e.currentTarget.querySelectorAll("button");
+                if (e.shiftKey && document.activeElement === controls[0]) {
+                  e.preventDefault();
+                  controls[1].focus();
+                } else if (
+                  !e.shiftKey &&
+                  document.activeElement === controls[1]
+                ) {
+                  e.preventDefault();
+                  controls[0].focus();
+                }
+              }
+            }}
+          >
+            <h2 id="switch-title">Switch patient?</h2>
+            <p>The current note will close. Saved records stay in history.</p>
+            <div className="dialog-actions">
+              <button autoFocus onClick={() => setPendingPatient(null)}>
+                Cancel
+              </button>
+              <button
+                className="primary"
+                onClick={() => {
+                  dispatch({ type: "narrative", value: "" });
+                  setPreview("");
+                  setOriginal("");
+                  setAudit("");
+                  setPatient(pendingPatient);
+                  setPendingPatient(null);
+                  setPage("capture");
+                  setFilter("all");
+                }}
+              >
+                Switch patient
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
       {bulkOpen ? (
         <div className="dialog-backdrop">
           <section

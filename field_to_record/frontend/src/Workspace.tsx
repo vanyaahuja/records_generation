@@ -1,3 +1,5 @@
+import { Icon } from "./Icons";
+import { Select } from "./Controls";
 import { useMemo, useState, type FormEvent } from "react";
 import type { Patient, PatientCreate } from "./generated";
 import type { Event } from "./state";
@@ -22,40 +24,7 @@ export const metrics = {
 };
 export type Metric = keyof typeof metrics;
 
-export function Icon({ name, size = 20 }: { name: string; size?: number }) {
-  const paths: Record<string, string> = {
-    capture: "M12 3v12m-4-4 4 4 4-4M5 15v5h14v-5",
-    dashboard: "M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z",
-    patients:
-      "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m8-7a4 4 0 0 1 0 8m5 9v-2a4 4 0 0 0-3-4",
-    records: "M6 3h9l4 4v14H6zM14 3v5h5M9 12h7m-7 4h7",
-    mic: "M9 6a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zm-4 6a7 7 0 0 0 14 0m-7 7v3m-4 0h8",
-    pulse: "M2 12h5l3-8 4 16 3-8h5",
-    check: "m5 12 4 4L19 6",
-    arrow: "M5 12h14m-5-5 5 5-5 5",
-    plus: "M12 5v14M5 12h14",
-    moon: "M20 15A9 9 0 0 1 9 3a9 9 0 1 0 11 12",
-    search: "m21 21-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0",
-    shield: "m12 3 9 4v6c0 4-9 9-9 9s-9-5-9-9V7zm-4 9 3 3 5-6",
-    clock: "M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0",
-  };
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.65"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d={paths[name] || paths.pulse} />
-    </svg>
-  );
-}
-
+export { Icon } from "./Icons";
 export function PatientDirectory({
   patients,
   selected,
@@ -136,9 +105,7 @@ export function PatientDirectory({
             <div className="empty-state">
               <Icon name="patients" size={30} />
               <h3>
-                {patients.length
-                  ? "No matching patients"
-                  : "Your patients belong here"}
+                {patients.length ? "No matching patients" : "No patients yet"}
               </h3>
               <p>
                 Register a synthetic patient to keep their notes and
@@ -154,8 +121,8 @@ export function PatientDirectory({
       </section>
       <section className="panel registration">
         <span className="eyebrow">NEW PATIENT</span>
-        <h2>A little context first.</h2>
-        <p>Create a profile, then capture their on-scene note.</p>
+        <h2>New patient</h2>
+        <p></p>
         <form onSubmit={submit}>
           <label>
             Patient name
@@ -183,7 +150,7 @@ export function PatientDirectory({
             </label>
             <label>
               Gender
-              <select
+              <Select
                 aria-label="Gender"
                 value={gender}
                 onChange={(e) =>
@@ -195,7 +162,7 @@ export function PatientDirectory({
                 <option value="male">Male</option>
                 <option value="nonbinary">Nonbinary</option>
                 <option value="other">Other</option>
-              </select>
+              </Select>
             </label>
           </div>
           {error ? (
@@ -234,6 +201,7 @@ export function PatientDashboard({
   draftDate,
   onCapture,
   onOpen,
+  onNavigate,
 }: {
   patient: Patient | null;
   records: PatientRecord[];
@@ -241,6 +209,7 @@ export function PatientDashboard({
   draftDate: string;
   onCapture: () => void;
   onOpen: (id: string) => void;
+  onNavigate: (page: string) => void;
 }) {
   const [metric, setMetric] = useState<Metric>("blood_pressure");
   const [range, setRange] = useState("all");
@@ -306,25 +275,14 @@ export function PatientDashboard({
     (p) => p.event.event_type === "observation",
   ).length;
   const flags = all.filter(
-    (p) =>
-      p.event.flags.length &&
-      p.event.review_status === "needs_human_confirmation",
+    (p) => p.event.review_status === "needs_human_confirmation",
   ).length;
   return (
     <>
       <div className="page-intro">
         <div>
           <span className="eyebrow">PATIENT OVERVIEW</span>
-          <h1>
-            {patient
-              ? `${patient.name}’s workspace`
-              : "A clear view of every detail."}
-          </h1>
-          <p>
-            {patient
-              ? `${patient.age} years · ${patient.gender.replaceAll("_", " ")} · ${patient.patient_id.slice(0, 8)}`
-              : "Select a patient to explore their recorded observations."}
-          </p>
+          <h1>{patient ? "Overview" : "Overview"}</h1>
         </div>
         <button className="primary" onClick={onCapture}>
           <Icon name="plus" />
@@ -336,6 +294,7 @@ export function PatientDashboard({
           ["Saved notes", records.length, "records"],
           ["Recorded events", eventCount, "pulse"],
           ["Observations", observationCount, "dashboard"],
+          ["To review", flags, "clock"],
         ].map(([label, value, icon]) => (
           <div className="stat-card" key={String(label)}>
             <span className="stat-label">
@@ -343,6 +302,49 @@ export function PatientDashboard({
               <Icon name={String(icon)} />
             </span>
             <strong className="stat-value">{value}</strong>
+            <svg
+              className="stat-sparkline"
+              width="45"
+              height="28"
+              viewBox="0 0 45 28"
+              aria-hidden="true"
+            >
+              {dates
+                .slice(0, 6)
+                .sort()
+                .map((date, index, array) => {
+                  const numbers = array.map((day) =>
+                    label === "Saved notes"
+                      ? records.filter(
+                          (r) =>
+                            (r.encounter_date || r.created_at.slice(0, 10)) ===
+                            day,
+                        ).length
+                      : all.filter(
+                          (p) =>
+                            p.date === day &&
+                            (label === "Observations"
+                              ? p.event.event_type === "observation"
+                              : label === "To review"
+                                ? p.event.review_status ===
+                                  "needs_human_confirmation"
+                                : true),
+                        ).length,
+                  );
+                  const height =
+                    (numbers[index] / Math.max(1, ...numbers)) * 24;
+                  return (
+                    <rect
+                      key={date}
+                      x={index * 7 + 2}
+                      y={28 - height}
+                      width="5"
+                      height={height}
+                      rx="1.5"
+                    />
+                  );
+                })}
+            </svg>
             <span className="stat-caption">
               {draft.length
                 ? "Includes current unsaved extraction"
@@ -360,7 +362,7 @@ export function PatientDashboard({
             </div>
             <label className="inline-select">
               <span className="sr-only">Chart observation</span>
-              <select
+              <Select
                 aria-label="Chart observation"
                 value={metric}
                 onChange={(e) => setMetric(e.target.value as Metric)}
@@ -370,7 +372,7 @@ export function PatientDashboard({
                     {m.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           </div>
           <div className="chart-toolbar">
@@ -380,7 +382,7 @@ export function PatientDashboard({
                 : "—"}
               <small>{metrics[metric].unit}</small>
             </span>
-            <select
+            <Select
               aria-label="Chart encounter date"
               value={range}
               onChange={(e) => setRange(e.target.value)}
@@ -389,7 +391,7 @@ export function PatientDashboard({
               {dates.map((date) => (
                 <option key={date}>{date}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <ObservationChart points={points} metric={metric} />
           <p className="help">
@@ -400,36 +402,79 @@ export function PatientDashboard({
         </section>
         <section className="panel activity-panel timeline-panel">
           <div className="panel-heading">
-            <h2>Latest events</h2>
-            <span className="count">{flags} to review</span>
+            <h2>Review activity</h2>
+            <span>{flags} pending</span>
           </div>
-          <div className="timeline-date">
-            {dates[0] || "No encounter selected"}
-          </div>
-          {all.length ? (
-            all.slice(-7).map(({ event, date }, index) => (
-              <div
-                className="timeline-event"
-                key={`${event.event_id}-${index}`}
-              >
-                <time>{event.event_time || "—"}</time>
+          {[
+            ...records.slice(0, 4).map((r) => ({
+              id: r.record_id,
+              label: r.case_id,
+              date: r.encounter_date || r.created_at.slice(0, 10),
+              events: r.events,
+            })),
+            ...(draft.length
+              ? [
+                  {
+                    id: "draft",
+                    label: "Current note",
+                    date: draftDate,
+                    events: draft,
+                  },
+                ]
+              : []),
+          ].map((note) => {
+            const accepted = note.events.filter(
+              (e) =>
+                e.review_status !== "needs_human_confirmation" &&
+                e.flags.every((f) => e.accepted_flags.includes(f)),
+            ).length;
+            const percent = note.events.length
+              ? Math.round((accepted / note.events.length) * 100)
+              : 0;
+            return (
+              <div className="review-activity" key={note.id}>
+                <span className="activity-avatar">
+                  <Icon name="records" size={15} />
+                </span>
                 <div>
-                  <strong>{event.medication || event.description}</strong>
-                  <small>
-                    {date} · {event.event_type.replaceAll("_", " ")}
-                  </small>
+                  <div>
+                    <strong>{note.label}</strong>
+                    <span>{percent}%</span>
+                  </div>
+                  <small>{note.date} · reviewed</small>
+                  <div className="activity-track">
+                    <span
+                      style={{
+                        width: `${percent}%`,
+                        background:
+                          percent === 100 ? "var(--mint)" : "var(--accent)",
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="empty-state">
-              <Icon name="clock" />
-              <p>Recorded events will appear here.</p>
+            );
+          })}
+          {!records.length && !draft.length ? (
+            <div className="mini-empty">
+              <Icon name="records" />
+              <span>No notes yet</span>
             </div>
-          )}
+          ) : null}
         </section>
       </div>
-      <EventAnalytics records={records} draft={draft} />
+      <EventAnalytics
+        records={records}
+        draft={draft}
+        onCapture={onCapture}
+        onPatients={() => onNavigate("patients")}
+        onRecords={() => onNavigate("records")}
+        onReview={() =>
+          draft.length
+            ? onNavigate("review")
+            : records[0] && onOpen(records[0].record_id)
+        }
+      />
       <details className="panel category-details">
         <summary>Category totals</summary>
         <section className="category-totals">
@@ -489,9 +534,7 @@ export function PatientDashboard({
           <div className="empty-state">
             <Icon name="records" size={30} />
             <h3>No saved notes yet</h3>
-            <p>
-              Capture, review and save a note to build this patient’s history.
-            </p>
+            <p></p>
           </div>
         ) : (
           <div className="table-scroll">
@@ -540,185 +583,127 @@ export function PatientDashboard({
 function EventAnalytics({
   records,
   draft,
+  onCapture,
+  onPatients,
+  onRecords,
+  onReview,
 }: {
   records: PatientRecord[];
   draft: Event[];
+  onCapture: () => void;
+  onPatients: () => void;
+  onRecords: () => void;
+  onReview: () => void;
 }) {
-  const kinds = ["medication_administration", "procedure", "observation"];
-  const groups = new Map<string, number[]>();
-  records.forEach((r) => {
-    const date = r.encounter_date || r.created_at.slice(0, 10);
-    const counts = groups.get(date) || [0, 0, 0];
-    r.events.forEach((e) => {
-      const index = kinds.indexOf(e.event_type);
-      if (index >= 0) counts[index]++;
-    });
-    groups.set(date, counts);
-  });
-  const days = [...groups].sort(([a], [b]) => a.localeCompare(b)).slice(-7);
-  const peak = Math.max(1, ...days.flatMap(([, counts]) => counts));
   const all = [...records.flatMap((r) => r.events), ...draft];
-  const accepted = all.filter(
-    (e) =>
-      e.review_status !== "needs_human_confirmation" &&
-      e.flags.every((f) => e.accepted_flags.includes(f)),
-  ).length;
-  const saved = records
-    .filter((r) => r.record_status === "reviewed")
-    .reduce((sum, r) => sum + r.events.length, 0);
-  const stages = [all.length, accepted, saved];
-  const labels = ["Documented", "Accepted", "Reviewed & saved"];
+  const kinds = [
+    ["medication_administration", "Medication"],
+    ["procedure", "Procedures"],
+    ["observation", "Observations"],
+    ["unclassified", "Other"],
+  ];
+  const flags = new Map<string, number>();
+  all.forEach((e) =>
+    e.flags.forEach((flag) => flags.set(flag, (flags.get(flag) || 0) + 1)),
+  );
+  const ranked = [...flags].sort((a, b) => b[1] - a[1]).slice(0, 5);
   return (
     <div className="lower-chart-grid">
-      <section className="panel grouped-panel">
+      <section className="panel mix-panel">
         <div className="panel-heading">
-          <div>
-            <h2>Event volume</h2>
-            <p>Saved events · latest 7 encounter dates</p>
-          </div>
-          <Icon name="dashboard" size={16} />
+          <h2>Event distribution</h2>
+          <span>{all.length} total</span>
         </div>
-        <div className="mono-legend">
-          <span>● Medication</span>
-          <span>● Procedures</span>
-          <span>● Observations</span>
+        <div
+          className="segmented-chart"
+          role="img"
+          aria-label={kinds
+            .map(
+              ([kind, label]) =>
+                `${label}: ${all.filter((e) => e.event_type === kind).length}`,
+            )
+            .join(", ")}
+        >
+          {kinds.map(([kind, label], i) => {
+            const count = all.filter((e) => e.event_type === kind).length;
+            return count ? (
+              <span
+                key={kind}
+                className={`segment segment-${i}`}
+                style={{ flex: count }}
+              >
+                <span className="chart-tooltip">
+                  {label}: {count}
+                </span>
+              </span>
+            ) : null;
+          })}
+          {!all.length ? <span className="segment-empty" /> : null}
         </div>
-        {days.length ? (
-          <svg
-            className="grouped-chart"
-            viewBox="0 0 560 195"
-            role="img"
-            aria-label="Saved medication, procedure and observation counts by encounter date"
-          >
-            {[0, 0.5, 1].map((n, i) => (
-              <g key={i}>
-                <line
-                  x1="32"
-                  x2="545"
-                  y1={20 + n * 140}
-                  y2={20 + n * 140}
-                  className="chart-grid"
-                />
-                <text x="23" y={24 + n * 140} textAnchor="end">
-                  {Math.round(peak * (1 - n))}
-                </text>
-              </g>
-            ))}
-            {days.map(([date, counts], i) => {
-              const stride = 500 / days.length;
-              return (
-                <g key={date}>
-                  {counts.map((count, j) => (
-                    <rect
-                      key={j}
-                      x={40 + i * stride + j * 12}
-                      y={160 - (count / peak) * 140}
-                      width="8"
-                      height={(count / peak) * 140}
-                      rx="3"
-                      className={`volume-bar volume-${j}`}
-                    >
-                      <title>
-                        {date}: {kinds[j].replaceAll("_", " ")} {count}
-                      </title>
-                    </rect>
-                  ))}
-                  <text x={52 + i * stride} y="184" textAnchor="middle">
-                    {date.slice(5)}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        ) : (
-          <div className="empty-state small-empty">
-            <Icon name="dashboard" />
-            <p>Save a note to see event volume over time.</p>
-          </div>
-        )}
-        <details className="chart-data">
-          <summary>View event counts</summary>
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Medication</th>
-                  <th>Procedures</th>
-                  <th>Observations</th>
-                </tr>
-              </thead>
-              <tbody>
-                {days.map(([date, counts]) => (
-                  <tr key={date}>
-                    <td>{date}</td>
-                    {counts.map((count, j) => (
-                      <td key={j}>{count}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      </section>
-      <section className="panel funnel-panel">
-        <div className="panel-heading">
-          <div>
-            <h2>Review progress</h2>
-            <p>Events through the documentation workflow</p>
-          </div>
-          <Icon name="check" size={16} />
-        </div>
-        <div className="funnel-labels">
-          {stages.map((n, i) => (
-            <div key={i}>
-              <strong>{n}</strong>
-              <span>{labels[i]}</span>
+        <div className="mix-legend">
+          {kinds.map(([kind, label], i) => (
+            <div key={kind}>
+              <i className={`segment-${i}`} />
+              <span>
+                {label}
+                <small>
+                  {all.filter((e) => e.event_type === kind).length} events
+                </small>
+              </span>
             </div>
           ))}
         </div>
-        {all.length ? (
-          <svg
-            className="funnel-chart"
-            viewBox="0 0 540 155"
-            role="img"
-            aria-label={`${stages[0]} documented, ${stages[1]} accepted, ${stages[2]} reviewed and saved events`}
-          >
-            {stages.map((n, i) => {
-              const a = (n / all.length) * 112,
-                b = ((stages[i + 1] ?? n) / all.length) * 112;
-              const x = i * 180;
-              return (
-                <path
-                  key={i}
-                  d={`M${x},${78 - a / 2} C${x + 90},${78 - a / 2} ${x + 90},${78 - b / 2} ${x + 180},${78 - b / 2} L${x + 180},${78 + b / 2} C${x + 90},${78 + b / 2} ${x + 90},${78 + a / 2} ${x},${78 + a / 2} Z`}
-                  className={`funnel-stage stage-${i}`}
-                >
-                  <title>
-                    {labels[i]}: {n}
-                  </title>
-                </path>
-              );
-            })}
-          </svg>
+      </section>
+      <section className="panel flags-chart">
+        <div className="panel-heading">
+          <h2>Review flags</h2>
+          <span>{ranked.length} types</span>
+        </div>
+        {ranked.length ? (
+          ranked.map(([flag, count], i) => (
+            <div className="flag-bar" key={flag}>
+              <div>
+                <span>{flag.replaceAll("_", " ")}</span>
+                <small>{count}</small>
+              </div>
+              <div className="flag-track">
+                <span
+                  className={`flag-color-${i}`}
+                  style={{
+                    width: `${(count / Math.max(1, all.length)) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ))
         ) : (
-          <div className="empty-state small-empty">
-            <Icon name="check" />
-            <p>Captured events will build this review flow.</p>
+          <div className="mini-empty">
+            <Icon name="check" size={25} />
+            <span>No flags</span>
           </div>
         )}
-        <div className="funnel-percentages">
-          {stages.map((n, i) => (
-            <span key={i}>
-              {all.length ? Math.round((n / all.length) * 100) : 0}%
-            </span>
+      </section>
+      <section className="panel quick-panel">
+        <div className="panel-heading">
+          <h2>Quick actions</h2>
+        </div>
+        <div className="quick-grid">
+          {[
+            ["mic", "New note", onCapture],
+            ["patients", "Patients", onPatients],
+            ["records", "Records", onRecords],
+            ["check", "Review", onReview],
+          ].map(([icon, label, action]) => (
+            <button
+              key={String(label)}
+              onClick={action as () => void}
+              disabled={label === "Review" && !all.length}
+            >
+              <Icon name={String(icon)} size={22} />
+              <span>{String(label)}</span>
+            </button>
           ))}
         </div>
-        <p className="help">
-          Latest 100 notes plus the current draft. Review completion is a
-          documentation measure, not a patient outcome.
-        </p>
       </section>
     </div>
   );
@@ -731,6 +716,7 @@ function ObservationChart({
   points: Point[];
   metric: Metric;
 }) {
+  const [hovered, setHovered] = useState<Point | null>(null);
   if (!points.length)
     return (
       <div className="empty-state chart-empty">
@@ -763,73 +749,98 @@ function ObservationChart({
       .join(" ");
   return (
     <>
-      <svg
-        className="observation-chart"
-        viewBox="0 0 650 220"
-        role="img"
-        aria-label={`${metrics[metric].label} over reported time. ${points.length} readings. Values listed below.`}
-      >
-        <defs>
-          <linearGradient id={`area-${metric}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="currentColor" stopOpacity=".15" />
-            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {points.length > 1 ? (
-          <polygon
-            points={`${x(0)},180 ${line()} ${x(points.length - 1)},180`}
-            fill={`url(#area-${metric})`}
-            className="chart-area"
-          />
-        ) : null}
-        {[0, 0.5, 1].map((n, i) => (
-          <g key={i}>
-            <line
-              x1="54"
-              x2="620"
-              y1={30 + n * 150}
-              y2={30 + n * 150}
-              className="chart-grid"
+      <div className="chart-canvas">
+        <svg
+          className="observation-chart"
+          viewBox="0 0 650 220"
+          role="img"
+          aria-label={`${metrics[metric].label} over reported time. ${points.length} readings. Values listed below.`}
+        >
+          <defs>
+            <linearGradient id={`area-${metric}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="currentColor" stopOpacity=".15" />
+              <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {points.length > 1 ? (
+            <polygon
+              points={`${x(0)},180 ${line()} ${x(points.length - 1)},180`}
+              fill={`url(#area-${metric})`}
+              className="chart-area"
             />
-            <text x="43" y={34 + n * 150} textAnchor="end">
-              {Math.round(max - n * (max - min))}
-            </text>
-          </g>
-        ))}
-        {points.length > 1 ? (
-          <polyline points={line()} className="chart-line" />
-        ) : null}
-        {metric === "blood_pressure" && points.length > 1 ? (
-          <polyline points={line(true)} className="chart-line secondary-line" />
-        ) : null}
-        {points.map((p, i) => (
-          <g key={`${p.time}-${i}`}>
-            <circle cx={x(i)} cy={y(p.value)} r="4.5" className="chart-dot">
-              <title>
-                {p.label}: {p.value}
-                {p.secondary !== undefined ? `/${p.secondary}` : ""} {p.unit}
-              </title>
-            </circle>
-            {p.secondary !== undefined ? (
+          ) : null}
+          {[0, 0.5, 1].map((n, i) => (
+            <g key={i}>
+              <line
+                x1="54"
+                x2="620"
+                y1={30 + n * 150}
+                y2={30 + n * 150}
+                className="chart-grid"
+              />
+              <text x="43" y={34 + n * 150} textAnchor="end">
+                {Math.round(max - n * (max - min))}
+              </text>
+            </g>
+          ))}
+          {points.length > 1 ? (
+            <polyline points={line()} className="chart-line" />
+          ) : null}
+          {metric === "blood_pressure" && points.length > 1 ? (
+            <polyline
+              points={line(true)}
+              className="chart-line secondary-line"
+            />
+          ) : null}
+          {points.map((p, i) => (
+            <g key={`${p.time}-${i}`}>
               <circle
                 cx={x(i)}
-                cy={y(p.secondary)}
-                r="4"
-                className="chart-dot secondary-dot"
-              >
-                <title>
-                  {p.label}: diastolic {p.secondary} {p.unit}
-                </title>
-              </circle>
-            ) : null}
-            {i === 0 || i === points.length - 1 ? (
-              <text x={x(i)} y="208" textAnchor="middle">
-                {p.time.slice(11, 16)}
-              </text>
-            ) : null}
-          </g>
-        ))}
-      </svg>
+                cy={y(p.value)}
+                r="4.5"
+                className="chart-dot"
+                tabIndex={0}
+                onPointerEnter={() => setHovered(p)}
+                onPointerLeave={() => setHovered(null)}
+                onFocus={() => setHovered(p)}
+                onBlur={() => setHovered(null)}
+                aria-label={`${p.label}: ${p.value} ${p.unit}`}
+              ></circle>
+              {p.secondary !== undefined ? (
+                <circle
+                  cx={x(i)}
+                  cy={y(p.secondary)}
+                  r="4"
+                  className="chart-dot secondary-dot"
+                  tabIndex={0}
+                  onPointerEnter={() => setHovered(p)}
+                  onPointerLeave={() => setHovered(null)}
+                  onFocus={() => setHovered(p)}
+                  onBlur={() => setHovered(null)}
+                  aria-label={`${p.label}: diastolic ${p.secondary} ${p.unit}`}
+                ></circle>
+              ) : null}
+              {i === 0 || i === points.length - 1 ? (
+                <text x={x(i)} y="208" textAnchor="middle">
+                  {p.time.slice(11, 16)}
+                </text>
+              ) : null}
+            </g>
+          ))}
+        </svg>
+        {hovered ? (
+          <div className="reading-tooltip">
+            <span>{hovered.label}</span>
+            <strong>
+              {hovered.value}
+              {hovered.secondary !== undefined
+                ? `/${hovered.secondary}`
+                : ""}{" "}
+              {hovered.unit}
+            </strong>
+          </div>
+        ) : null}
+      </div>
       <div className="chart-legend">
         <span>
           ● {metric === "blood_pressure" ? "Systolic" : metrics[metric].label}

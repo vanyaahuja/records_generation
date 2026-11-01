@@ -5,6 +5,14 @@ import {
   type APIRequestContext,
 } from "@playwright/test";
 
+async function choose(page: Page, label: string, value: string) {
+  await page.getByRole("combobox", { name: label, exact: true }).click();
+  await page
+    .getByRole("listbox", { name: label, exact: true })
+    .locator(`[data-value="${value}"]`)
+    .click();
+}
+
 async function registered(
   page: Page,
   request: APIRequestContext,
@@ -16,9 +24,7 @@ async function registered(
   expect(result.ok()).toBeTruthy();
   const patient = await result.json();
   await page.goto("/");
-  await page
-    .getByLabel("Active patient", { exact: true })
-    .selectOption(patient.patient_id);
+  await choose(page, "Active patient", patient.patient_id);
   return patient;
 }
 async function bulk(page: Page) {
@@ -68,7 +74,7 @@ test("capture first, patient registration, filtered bulk review, revisions and e
     .getByLabel("Patient name", { exact: true })
     .fill("Synthetic Alex " + Date.now());
   await page.getByLabel("Age", { exact: true }).fill("34");
-  await page.getByLabel("Gender", { exact: true }).selectOption("female");
+  await choose(page, "Gender", "female");
   await page
     .getByRole("button", { name: "Register patient", exact: true })
     .click();
@@ -80,6 +86,20 @@ test("capture first, patient registration, filtered bulk review, revisions and e
     .getByRole("button", { name: "Extract events", exact: true })
     .click();
   await expect(page.locator(".event-card")).toHaveCount(4);
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Patient overview", exact: true })
+    .click();
+  await expect(
+    page
+      .locator(".stat-card")
+      .filter({ hasText: "To review" })
+      .locator(".stat-value"),
+  ).toHaveText("4");
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Review events", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "Confirm & save", exact: true }),
   ).toBeDisabled();
@@ -90,9 +110,7 @@ test("capture first, patient registration, filtered bulk review, revisions and e
     .nth(2)
     .click();
   await expect(page.locator("mark")).toContainText("paracetamol");
-  await page
-    .getByLabel("Filter events", { exact: true })
-    .selectOption("blood_pressure");
+  await choose(page, "Filter events", "blood_pressure");
   await expect(page.locator(".event-card")).toHaveCount(1);
   await bulk(page);
   await expect(
@@ -115,7 +133,7 @@ test("capture first, patient registration, filtered bulk review, revisions and e
       .subarray(0, 4)
       .toString(),
   ).toBe("%PDF");
-  await page.getByLabel("Filter events", { exact: true }).selectOption("all");
+  await choose(page, "Filter events", "all");
   await page.locator(".event-card").first().getByRole("spinbutton").fill("250");
   await expect(
     page.getByRole("button", { name: "Confirm & save", exact: true }),
@@ -171,32 +189,42 @@ test("patient chart uses saved values, metric filters and isolated histories", a
     .click();
   await expect(page.locator(".chart-reading")).toContainText("118/78");
   await expect(page.locator(".chart-dot")).toHaveCount(4);
-  await page
-    .getByLabel("Chart observation", { exact: true })
-    .selectOption("heart_rate");
+  await page.locator(".chart-dot").first().focus();
+  await expect(page.locator(".reading-tooltip")).toContainText("120/80");
+  await choose(page, "Chart observation", "heart_rate");
   await expect(page.locator(".chart-reading")).toContainText("88");
   await expect(page.locator(".chart-dot")).toHaveCount(2);
   await page.locator(".chart-panel .chart-data summary").click();
   await expect(page.locator(".chart-panel .chart-data")).toContainText(
     "96 beats/min",
   );
-  await page
-    .getByLabel("Chart observation", { exact: true })
-    .selectOption("temperature");
+  await choose(page, "Chart observation", "temperature");
   await expect(page.locator(".chart-reading")).toContainText("37.4");
   await expect(page.locator(".chart-dot")).toHaveCount(1);
   await noOverflow(page);
-  await page
-    .getByLabel("Chart observation", { exact: true })
-    .selectOption("blood_pressure");
+  await choose(page, "Chart observation", "blood_pressure");
   await page.locator(".chart-panel .chart-data summary").click();
+  if (
+    await page
+      .getByRole("button", { name: "Dismiss notification", exact: true })
+      .count()
+  )
+    await page
+      .getByRole("button", { name: "Dismiss notification", exact: true })
+      .click();
   await page.screenshot({
     path: "test-results/patient-dashboard.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Patients", exact: true }).click();
-  page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Patients", exact: true })
+    .click();
+
   await page.getByRole("button", { name: new RegExp(b.name) }).click();
+  await page
+    .getByRole("button", { name: "Switch patient", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Patient overview", exact: true })
     .click();
@@ -238,10 +266,10 @@ test("mobile layout, dark mode and stale narrative invalidation", async ({
     .getByRole("button", { name: "Extract events", exact: true })
     .click();
   await expect(page.locator(".event-card")).toHaveCount(1);
-  await page.getByRole("button", { name: /Switch to light/ }).click();
-  await expect(page.locator("html")).not.toHaveClass(/dark/);
   await page.getByRole("button", { name: /Switch to dark/ }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
+  await page.getByRole("button", { name: /Switch to light/ }).click();
+  await expect(page.locator("html")).not.toHaveClass(/dark/);
   await noOverflow(page);
   await page.screenshot({
     path: "test-results/review-mobile.png",
@@ -299,4 +327,98 @@ test("live microphone produces text and reviewable events", async ({
   await expect(
     page.getByRole("button", { name: "Confirm & save", exact: true }),
   ).toBeDisabled();
+});
+
+test("custom controls, collapsible sidebar and notifications", async ({
+  page,
+  request,
+}) => {
+  await registered(page, request);
+  await expect(page.locator("select")).toHaveCount(0);
+  const expand = page.getByRole("button", {
+    name: "Expand sidebar",
+    exact: true,
+  });
+  await expand.click();
+  await expect(
+    page.getByRole("button", { name: "Collapse sidebar", exact: true }),
+  ).toHaveAttribute("aria-expanded", "true");
+  await page
+    .getByRole("button", { name: "Collapse sidebar", exact: true })
+    .click();
+  await expect(expand).toBeVisible();
+  await page
+    .getByRole("button", { name: "Notifications", exact: true })
+    .click();
+  await expect(page.getByLabel("Notification history")).toContainText(
+    "caught up",
+  );
+  await page
+    .getByRole("button", { name: "Notifications", exact: true })
+    .press("Escape");
+  await expect(page.getByLabel("Notification history")).toHaveCount(0);
+  await page
+    .getByRole("combobox", { name: "Active patient", exact: true })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Search Active patient", exact: true })
+    .fill("No such person");
+  await expect(
+    page.getByRole("listbox", { name: "Active patient", exact: true }),
+  ).toContainText("No results");
+  await page
+    .getByRole("textbox", { name: "Search Active patient", exact: true })
+    .press("Escape");
+  await expect(
+    page.getByRole("combobox", { name: "Active patient", exact: true }),
+  ).toBeFocused();
+  await page.getByRole("button", { name: "Load example", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Extract events", exact: true })
+    .click();
+  await expect(page.locator(".toast")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Dismiss notification", exact: true })
+    .click();
+  await expect(page.locator(".toast")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Notifications", exact: true })
+    .click();
+  await expect(page.getByLabel("Notification history")).toContainText(
+    "Extraction complete",
+  );
+  await page.getByRole("button", { name: "Clear", exact: true }).click();
+  await expect(page.getByLabel("Notification history")).toContainText(
+    "caught up",
+  );
+  await page
+    .getByRole("button", { name: "Notifications", exact: true })
+    .click();
+  await noOverflow(page);
+  expect(
+    await page
+      .locator(".panel")
+      .first()
+      .evaluate((node) => getComputedStyle(node).borderTopWidth),
+  ).toBe("0px");
+  expect(
+    await page.locator('svg[data-icon-set="solar"]').count(),
+  ).toBeGreaterThan(5);
+  await page.route("**/api/extract", (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "Extraction unavailable" }),
+    }),
+  );
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Capture note", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Extract events", exact: true })
+    .click();
+  await expect(page.locator(".toast.error")).toContainText(
+    "Extraction unavailable",
+  );
 });

@@ -1,3 +1,4 @@
+import { Select } from "./Controls";
 import { memo } from "react";
 import type { Event } from "./state";
 
@@ -58,7 +59,8 @@ function EventCard({ event: e, index, update, remove, select }: Props) {
         <div className="form-grid three">
           <label>
             Event type
-            <select
+            <Select
+              aria-label="Event type"
               value={e.event_type}
               onChange={(x) => change("event_type", x.target.value)}
             >
@@ -66,11 +68,12 @@ function EventCard({ event: e, index, update, remove, select }: Props) {
               <option value="procedure">Procedure</option>
               <option value="observation">Observation</option>
               <option value="unclassified">Unclassified</option>
-            </select>
+            </Select>
           </label>
           <label>
             Action status
-            <select
+            <Select
+              aria-label="Action status"
               value={e.status}
               onChange={(x) => change("status", x.target.value)}
             >
@@ -78,7 +81,7 @@ function EventCard({ event: e, index, update, remove, select }: Props) {
               <option value="negated">Not performed</option>
               <option value="uncertain">Uncertain</option>
               <option value="needs_review">Needs review</option>
-            </select>
+            </Select>
           </label>
           <label htmlFor={`${e.event_id}-time`}>
             Reported time{" "}
@@ -194,7 +197,8 @@ function EventCard({ event: e, index, update, remove, select }: Props) {
           <div className="observation-fields">
             <label>
               Observation type
-              <select
+              <Select
+                aria-label="Observation type"
                 value={String(e.observation?.type || "")}
                 onChange={(x) =>
                   change("observation", { type: x.target.value })
@@ -206,7 +210,7 @@ function EventCard({ event: e, index, update, remove, select }: Props) {
                 <option value="spo2">Oxygen saturation</option>
                 <option value="respiratory_rate">Respiratory rate</option>
                 <option value="temperature">Temperature</option>
-              </select>
+              </Select>
             </label>
             <button
               aria-label="Source"
@@ -301,7 +305,7 @@ function EventCard({ event: e, index, update, remove, select }: Props) {
       <div className="event-footer">
         <span>
           {e.review_status === "needs_human_confirmation"
-            ? "Awaiting individual review"
+            ? "Awaiting review"
             : "Accepted by reviewer"}
         </span>
         <button
